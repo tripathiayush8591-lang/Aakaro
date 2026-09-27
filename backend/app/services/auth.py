@@ -82,6 +82,12 @@ class FirebaseIdentity:
 def require_identity(
     request: Request, authorization: str | None = Header(default=None)
 ) -> Identity:
+    # TODO(auth-resume): TEMPORARY development-only accommodation for the deferred
+    # Firebase setup. Active only when DEV_AUTH_ENABLED=true (default false) and
+    # must be removed together with that setting when Firebase verification is
+    # re-enabled. Production deployments must never set DEV_AUTH_ENABLED.
+    if request.app.state.settings.dev_auth_enabled:
+        return Identity(uid="dev-local")
     # A sync dependency runs Firebase's blocking certificate/revocation I/O in FastAPI's threadpool.
     if not authorization:
         raise AppError(401, "AUTH_REQUIRED", "Sign in with Google to continue.")

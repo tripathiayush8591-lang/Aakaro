@@ -60,8 +60,10 @@ All stage bodies include `requestId` and the structured upstream inputs needed b
 | GET /health | none | status; no secrets |
 | POST /api/clarify | idea | questions |
 | POST /api/strategy | idea, questions, answers | strategy |
+| POST /api/idea/clarify | idea | exactly 3 questions (canonical ids q1–q3, question ≤300, reason ≤300) |
+| POST /api/strategy/generate | idea, exactly 3 {question, answer} pairs | StrategyBrief: oneLiner, audience{primary, description}, problem, promise, differentiation, personality(3), positioning, namingTerritories(2–4) |
 | POST /api/naming/candidates | confirmed strategy | exactly 5 candidates |
-| POST /api/directions | confirmed strategy, generated candidates | evaluation, exactly 2 directions, 3 rejected candidate references |
+| POST /api/naming/evaluate | confirmed strategy, the 5 generated candidates | evaluation of all 5 (Phase 3); directions generation is a later stage |
 | POST /api/kit | strategy, selected direction | kit |
 | POST /api/review | strategy, kit, kitRevision, confirmed rules, rulesRevision | kit review |
 | POST /api/spellcheck | strategy, confirmed rules, rulesRevision, text, contentRevision | issues and suggested rewrite |
@@ -72,7 +74,7 @@ Review returns suggested replacements. Apply accepted fixes locally only if thei
 
 ## State and invalidation
 - One canonical project state drives forms, previews, review, and export.
-- Editing confirmed strategy invalidates candidates, evaluation, directions, selection, kit, brand rules, and both review modes. Explain consequences before a destructive regeneration.
+- Editing confirmed strategy invalidates candidates, evaluation, directions, selection, kit, brand rules, and both review modes. Explain consequences before a destructive regeneration. Implemented: `setIdea`, `editStrategy`, `reviseAnswers`, and `unlockStrategy` all reset the naming block; unlocking after a confirmed naming decision restarts naming.
 - Changing selected direction invalidates kit, brand rules, both reviews, and any name screen.
 - Editing a kit or applying a fix increments kit revision and marks its previous review stale. Edits affecting tone/audience/personality flag rules for reconfirmation and content review as stale. Name edits invalidate language screening.
 - Only the newest matching request/session/revision may commit a response.
@@ -87,11 +89,13 @@ One bounded request per explicit stage; no queues or background framework for MV
 Frontend and backend can deploy separately. Choose hosts early and verify HTTPS, actual AI request duration limits, exact frontend CORS origin, Firebase authorized domains, and backend credentials. Keep hosting choice provisional until tested.
 Frontend public configuration: `VITE_API_BASE_URL`, `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, and other required Firebase web config fields.
 Backend secrets/config: `GEMINI_API_KEY`, `GEMINI_MODEL`, Firebase Admin credentials using the host-supported mechanism, `FIREBASE_PROJECT_ID`, and `CORS_ORIGINS`.
+
+**Temporary while auth is deferred (remove when Firebase sign-in resumes):** backend `DEV_AUTH_ENABLED` (default false) returns the fixed `dev-local` identity without token verification; backend `MOCK_PROVIDER_ENABLED` (default false) swaps `GeminiService` for the deterministic `MockAakaroAI` behind the same interface; frontend `VITE_DEV_AUTH_BYPASS=1` (dev builds, Firebase unconfigured only) opens the workspace without sign-in. All three are explicit opt-ins, never production defaults, and marked with `TODO(auth-resume)`. Project storage in this mode uses the deterministic key `aakaro:v1:dev-local:active-project`.
 Firebase web configuration is not an Admin secret. Never put Gemini keys or service-account private keys in `VITE_*` variables. Supply placeholder `.env.example` files and ignore real credentials.
 
 ## Feature contracts and validation
-- `NamingCandidate`: id, name, intendedAngle, rationale; five distinct IDs/names.
-- `NamingEvaluation`: candidateId, disposition (shortlisted/rejected), audienceFit, distinctiveness, pronunciation, decisionReason. Five entries must partition the submitted candidates exactly: two shortlisted, three rejected. Reject new/unknown IDs, duplicate IDs, name substitutions, or missing candidates. Directions each reference one different shortlisted candidate. Keep source candidates/evaluation in project state.
+- `NamingCandidate`: id, name, intendedAngle, rationale; five distinct IDs/names. Implemented (Phase 3): id (`n1`–`n5`, canonicalized server-side), name, rationale, territory, optional linguisticNote; five distinct ids and case-insensitively distinct names enforced by schema validators with one repair attempt.
+- `NamingEvaluation` (implemented shape, per Phase 3 spec): candidateId, scores {distinctiveness, strategicFit, memorability, extensibility} (integers 1–5), strengths (1–3 ≤120 chars), risks (1–3 ≤120 chars), verdict (≤300). The evaluation must cover exactly the five submitted candidate ids (no new/unknown/duplicate/missing ids; service-level check with one repair). The user — not the model — shortlists exactly two (`selectedIds`); the remaining three become `graveyardIds` on confirmation. Keep source candidates/evaluation in project state. Directions (later phase) must each reference one different shortlisted candidate.
 - `BrandRule`: id, kind, description, optional phrases, optional maxSentenceWords. Kinds include tone, audience, bannedPhrase, sentenceLength, unsupportedClaim. Store user-confirmed rules and a rulesRevision separately from generated kit proposals.
 - `ContentReview`: contentRevision, rulesRevision, issues, suggestedRewrite, summary.
 - `ContentIssue`: id, source (deterministic/ai), quote, ruleId, explanation, suggestedText. Quotes must exist in submitted text; rule IDs must exist. Do not blindly apply character offsets from the model. For external content, MVP uses a separate full rewrite with Copy/Use rewrite, preserving original text; per-issue replacement is optional.

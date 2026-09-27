@@ -12,11 +12,14 @@ from pydantic_settings import SettingsError
 from starlette.exceptions import HTTPException
 
 from app.api.connection import router
+from app.api.naming import router as naming_router
+from app.api.strategy import router as strategy_router
 from app.core.config import Settings
 from app.core.errors import AppError
 from app.core.limits import UserLimiter
 from app.services.auth import FirebaseIdentity
 from app.services.gemini import GeminiService
+from app.services.mock_ai import MockAakaroAI
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -38,7 +41,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(title="Aakaro foundation", lifespan=lifespan)
     app.state.settings = settings
     app.state.identity = FirebaseIdentity(settings)
-    app.state.gemini = GeminiService(settings)
+    # Development-only deterministic provider, swapped for Gemini by configuration.
+    app.state.gemini = (
+        MockAakaroAI() if settings.mock_provider_enabled else GeminiService(settings)
+    )
     app.state.limiter = UserLimiter(
         settings.user_request_limit, settings.user_window_seconds
     )
@@ -100,7 +106,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             AppError(
                 422,
                 "VALIDATION_ERROR",
-                "Provide a request ID and an idea between 1 and 1,000 characters.",
+                "Check the request: a request ID, an idea between 1 and 1,000 "
+                "characters, exactly three clarification questions with answers, "
+                "five naming candidates or evaluations with distinct matching "
+                "IDs, and no unknown fields are required.",
             ),
         )
 
@@ -118,6 +127,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {"requestId": request.state.request_id, "data": {"status": "ok"}}
 
     app.include_router(router)
+    app.include_router(strategy_router)
+    app.include_router(naming_router)
     return app
 
 

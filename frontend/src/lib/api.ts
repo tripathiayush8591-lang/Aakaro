@@ -1,6 +1,12 @@
 import type { User } from "firebase/auth";
 import { auth } from "./firebase";
 import type { ApiFailure, ConnectionResult, Success } from "../types/api";
+import type {
+  ClarificationQuestion,
+  NamingCandidate,
+  NamingEvaluation,
+  StrategyBrief,
+} from "../types/project";
 
 export class ApiError extends Error {
   constructor(
@@ -136,4 +142,216 @@ export async function testConnection(
     requestId: result.requestId,
     data: data as unknown as ConnectionResult,
   };
+}
+
+function boundedText(value: unknown, max: number): value is string {
+  return (
+    typeof value === "string" &&
+    value.trim().length > 0 &&
+    value.length <= max
+  );
+}
+
+const invalidAIResponse: ApiFailure = {
+  code: "INVALID_RESPONSE",
+  message: "The AI response was incomplete. Try again.",
+  retryable: true,
+};
+
+export async function clarifyIdea(
+  idea: string,
+  user: User | null,
+  signal: AbortSignal,
+): Promise<ClarificationQuestion[]> {
+  const result = await request("/api/idea/clarify", user, signal, {
+    idea: idea.trim(),
+  });
+  const data = result.data;
+  const questions =
+    object(data) && Array.isArray(data.questions) ? data.questions : null;
+  if (
+    !questions ||
+    questions.length !== 3 ||
+    !questions.every(
+      (q) =>
+        object(q) &&
+        boundedText(q.id, 80) &&
+        boundedText(q.question, 300) &&
+        boundedText(q.reason, 300),
+    )
+  ) {
+    throw new ApiError(invalidAIResponse, result.requestId);
+  }
+  return questions as unknown as ClarificationQuestion[];
+}
+
+function parseBrief(value: unknown): StrategyBrief | null {
+  if (!object(value)) return null;
+  const audience =
+    object(value.audience) &&
+    boundedText(value.audience.primary, 160) &&
+    boundedText(value.audience.description, 800)
+      ? { primary: value.audience.primary, description: value.audience.description }
+      : null;
+  const list = (v: unknown, min: number, max: number, itemMax: number) =>
+    Array.isArray(v) &&
+    v.length >= min &&
+    v.length <= max &&
+    v.every((item) => boundedText(item, itemMax));
+  if (
+    !audience ||
+    !boundedText(value.oneLiner, 240) ||
+    !boundedText(value.problem, 800) ||
+    !boundedText(value.promise, 800) ||
+    !boundedText(value.differentiation, 800) ||
+    !boundedText(value.positioning, 800) ||
+    !list(value.personality, 3, 3, 60) ||
+    !list(value.namingTerritories, 2, 4, 80)
+  )
+    return null;
+  return {
+    oneLiner: value.oneLiner,
+    audience,
+    problem: value.problem,
+    promise: value.promise,
+    differentiation: value.differentiation,
+    personality: value.personality as string[],
+    positioning: value.positioning,
+    namingTerritories: value.namingTerritories as string[],
+  };
+}
+
+export async function generateStrategy(
+  idea: string,
+  clarifications: { question: string; answer: string }[],
+  user: User | null,
+  signal: AbortSignal,
+): Promise<StrategyBrief> {
+  const result = await request("/api/strategy/generate", user, signal, {
+    idea: idea.trim(),
+    clarifications,
+  });
+  const brief = parseBrief(result.data);
+  if (!brief) throw new ApiError(invalidAIResponse, result.requestId);
+  return brief;
+}
+
+function parseCandidate(value: unknown): NamingCandidate | null {
+  if (!object(value)) return null;
+  if (
+    !boundedText(value.id, 80) ||
+    !boundedText(value.name, 40) ||
+    !boundedText(value.rationale, 300) ||
+    !boundedText(value.territory, 80)
+  )
+    return null;
+  const candidate: NamingCandidate = {
+    id: value.id,
+    name: value.name,
+    rationale: value.rationale,
+    territory: value.territory,
+  };
+  if (value.linguisticNote !== undefined && value.linguisticNote !== null) {
+    if (!boundedText(value.linguisticNote, 200)) return null;
+    candidate.linguisticNote = value.linguisticNote;
+  }
+  return candidate;
+}
+
+export async function generateNamingCandidates(
+  strategy: StrategyBrief,
+  user: User | null,
+  signal: AbortSignal,
+): Promise<NamingCandidate[]> {
+  const result = await request("/api/naming/candidates", user, signal, {
+    strategy,
+  });
+  const data = result.data;
+  const candidates =
+    object(data) && Array.isArray(data.candidates) ? data.candidates : null;
+  if (
+    !candidates ||
+    candidates.length !== 5 ||
+    !candidates.every((c) => parseCandidate(c) !== null) ||
+    new Set(candidates.map((c) => (c as NamingCandidate).id)).size !== 5 ||
+    new Set(candidates.map((c) => (c as NamingCandidate).name.toLowerCase())).size !==
+      5
+  ) {
+    throw new ApiError(invalidAIResponse, result.requestId);
+  }
+  return candidates as unknown as NamingCandidate[];
+}
+
+function scoreValue(value: unknown): value is number {
+  return (
+    typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 5
+  );
+}
+
+function parseEvaluation(
+  value: unknown,
+  candidateIds: Set<string>,
+): NamingEvaluation | null {
+  if (!object(value)) return null;
+  const scores =
+    object(value.scores) &&
+    scoreValue(value.scores.distinctiveness) &&
+    scoreValue(value.scores.strategicFit) &&
+    scoreValue(value.scores.memorability) &&
+    scoreValue(value.scores.extensibility)
+      ? {
+          distinctiveness: value.scores.distinctiveness,
+          strategicFit: value.scores.strategicFit,
+          memorability: value.scores.memorability,
+          extensibility: value.scores.extensibility,
+        }
+      : null;
+  const points = (v: unknown) =>
+    Array.isArray(v) &&
+    v.length >= 1 &&
+    v.length <= 3 &&
+    v.every((item) => boundedText(item, 120));
+  if (
+    !boundedText(value.candidateId, 80) ||
+    !candidateIds.has(value.candidateId) ||
+    !scores ||
+    !points(value.strengths) ||
+    !points(value.risks) ||
+    !boundedText(value.verdict, 300)
+  )
+    return null;
+  return {
+    candidateId: value.candidateId,
+    scores,
+    strengths: value.strengths as string[],
+    risks: value.risks as string[],
+    verdict: value.verdict,
+  };
+}
+
+export async function evaluateNamingCandidates(
+  strategy: StrategyBrief,
+  candidates: NamingCandidate[],
+  user: User | null,
+  signal: AbortSignal,
+): Promise<NamingEvaluation[]> {
+  const result = await request("/api/naming/evaluate", user, signal, {
+    strategy,
+    candidates,
+  });
+  const data = result.data;
+  const evaluations =
+    object(data) && Array.isArray(data.evaluations) ? data.evaluations : null;
+  const candidateIds = new Set(candidates.map((c) => c.id));
+  if (
+    !evaluations ||
+    evaluations.length !== 5 ||
+    !evaluations.every((e) => parseEvaluation(e, candidateIds) !== null) ||
+    new Set(
+      evaluations.map((e) => (e as NamingEvaluation).candidateId),
+    ).size !== 5
+  ) {
+    throw new ApiError(invalidAIResponse, result.requestId);
+  }
+  return evaluations as unknown as NamingEvaluation[];
 }

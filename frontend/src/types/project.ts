@@ -1,0 +1,144 @@
+/** Canonical Aakaro project state, shared by the wizard, persistence, and export. */
+
+export type ProjectStage =
+  | "idea"
+  | "clarification"
+  | "strategy"
+  | "naming"
+  | "directions"
+  | "brand-kit"
+  | "spellcheck"
+  | "export";
+
+export interface ClarificationQuestion {
+  id: string;
+  question: string;
+  reason: string;
+}
+
+export interface ClarificationAnswer {
+  questionId: string;
+  answer: string;
+}
+
+export interface StrategyAudience {
+  primary: string;
+  description: string;
+}
+
+export interface StrategyBrief {
+  oneLiner: string;
+  audience: StrategyAudience;
+  problem: string;
+  promise: string;
+  differentiation: string;
+  personality: string[];
+  positioning: string;
+  namingTerritories: string[];
+}
+
+export interface NamingCandidate {
+  id: string;
+  name: string;
+  rationale: string;
+  territory: string;
+  linguisticNote?: string;
+}
+
+export interface NamingScores {
+  distinctiveness: number;
+  strategicFit: number;
+  memorability: number;
+  extensibility: number;
+}
+
+export interface NamingEvaluation {
+  candidateId: string;
+  scores: NamingScores;
+  strengths: string[];
+  risks: string[];
+  verdict: string;
+}
+
+/**
+ * The naming domain: five generated candidates, their separate evaluation,
+ * the user's two-name shortlist, and the three rejected names in the Graveyard.
+ * "generating"/"evaluating" are in-flight-only and never persisted.
+ */
+export type NamingGenerationStatus =
+  | "idle"
+  | "generating"
+  | "generated"
+  | "evaluating"
+  | "ready"
+  | "confirmed";
+
+export interface NamingState {
+  candidates: NamingCandidate[];
+  evaluations: NamingEvaluation[];
+  selectedIds: string[];
+  graveyardIds: string[];
+  generationStatus: NamingGenerationStatus;
+  generatedAt?: string;
+  confirmedAt?: string;
+}
+
+export function emptyNamingState(): NamingState {
+  return {
+    candidates: [],
+    evaluations: [],
+    selectedIds: [],
+    graveyardIds: [],
+    generationStatus: "idle",
+  };
+}
+
+export interface AakaroProject {
+  schemaVersion: 1;
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  /** Bumped on every committed change; in-flight AI results must match it. */
+  revision: number;
+  currentStage: ProjectStage;
+  idea: { rawIdea: string };
+  clarification: {
+    questions: ClarificationQuestion[];
+    answers: ClarificationAnswer[];
+    completed: boolean;
+  };
+  strategy: {
+    draft: StrategyBrief | null;
+    confirmed: StrategyBrief | null;
+    confirmedAt?: string;
+  };
+  naming: NamingState;
+}
+
+/** The five visible steps of the guided journey, shown in the stage rail. */
+export const STAGE_STEPS = [
+  { id: "idea", label: "Idea" },
+  { id: "clarification", label: "Clarify" },
+  { id: "strategy", label: "Strategy" },
+  { id: "naming", label: "Naming" },
+  { id: "identity", label: "Identity" },
+] as const;
+
+export type StageStepId = (typeof STAGE_STEPS)[number]["id"];
+
+/** Maps the fine-grained project stages onto the five visible rail steps. */
+export function stageStep(stage: ProjectStage): StageStepId {
+  switch (stage) {
+    case "idea":
+      return "idea";
+    case "clarification":
+      return "clarification";
+    case "strategy":
+      return "strategy";
+    case "naming":
+    case "directions":
+      return "naming";
+    default:
+      return "identity";
+  }
+}

@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth, authMessage, login, logout } from "./lib/firebase";
 import { AuthPage } from "./components/AuthPage";
-import { ConnectionTest } from "./components/ConnectionTest";
+import { Workspace } from "./features/brand/Workspace";
+import { authDeferred, devSession, sessionOfUser } from "./lib/session";
 
 export default function App() {
   const [session, setSession] = useState<{
@@ -56,6 +57,9 @@ export default function App() {
       setSigningOut(false);
     }
   }
+  if (authDeferred)
+    // TODO(auth-resume): TEMPORARY development-only branch; remove when Firebase sign-in resumes.
+    return <Workspace session={devSession} user={null} authDeferred />;
   if (!session.user || initializing)
     return (
       <AuthPage
@@ -73,9 +77,11 @@ export default function App() {
         </p>
       )}
       {!signingOut ? (
-        <ConnectionTest
+        <Workspace
           key={`${session.user.uid}-${session.revision}`}
+          session={sessionOfUser(session.user)}
           user={session.user}
+          authDeferred={false}
           onLogout={signOut}
           signingOut={signingOut}
         />

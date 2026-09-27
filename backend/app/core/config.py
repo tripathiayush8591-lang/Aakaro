@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     user_request_limit: int = Field(default=5, ge=1, le=100)
     user_window_seconds: int = Field(default=60, ge=1, le=3600)
     connection_test_enabled: bool = True
+    # TODO(auth-resume): remove when Firebase verification is re-enabled. Development-only.
+    dev_auth_enabled: bool = False
+    # Development-only deterministic provider stand-in; never enable in production.
+    mock_provider_enabled: bool = False
 
     @field_validator("cors_origins")
     @classmethod

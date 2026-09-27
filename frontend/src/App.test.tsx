@@ -7,8 +7,10 @@ const mocks = vi.hoisted(() => ({
   listener: null as null | ((user: User | null) => void),
   login: vi.fn(),
   logout: vi.fn(),
-  testConnection: vi.fn(),
+  clarifyIdea: vi.fn(),
+  generateStrategy: vi.fn(),
   checkHealth: vi.fn(),
+  testConnection: vi.fn(),
 }));
 vi.mock("firebase/auth", () => ({
   onAuthStateChanged: (
@@ -29,25 +31,26 @@ vi.mock("./lib/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./lib/api")>()),
   checkHealth: mocks.checkHealth,
   testConnection: mocks.testConnection,
+  clarifyIdea: mocks.clarifyIdea,
+  generateStrategy: mocks.generateStrategy,
 }));
 import App from "./App";
 import { ApiError } from "./lib/api";
+import type { ClarificationQuestion } from "./types/project";
 const user = {
   uid: "one",
   displayName: "Test Person",
   email: "person@example.test",
 } as User;
-const response = {
-  requestId: "test",
-  data: {
-    summary: "Private idea summary",
-    possibleAudience: "Students",
-    clarifyingQuestion: "Which campus?",
-  },
-};
+const questions: ClarificationQuestion[] = [
+  { id: "q1", question: "Who is it for?", reason: "Audience shapes the voice." },
+  { id: "q2", question: "What changes?", reason: "Differentiation shapes the name." },
+  { id: "q3", question: "What feel?", reason: "Personality shapes the look." },
+];
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.checkHealth.mockResolvedValue(undefined);
+  localStorage.clear();
+  window.confirm = vi.fn(() => true);
   mocks.logout.mockImplementation(async () => {
     mocks.listener?.(null);
   });
@@ -59,7 +62,7 @@ async function signedIn() {
     mocks.listener?.(user);
   });
 }
-test("auth initializes separately; sign-in page has no diagnostics", async () => {
+test("auth initializes separately; sign-in page has no product flow", async () => {
   render(<App />);
   expect(
     (
@@ -76,8 +79,8 @@ test("auth initializes separately; sign-in page has no diagnostics", async () =>
   ).toBeTruthy();
   expect(screen.queryByLabelText("Your idea")).toBeNull();
 });
-test("provider failure preserves input and supports retry", async () => {
-  mocks.testConnection
+test("clarify failure preserves the idea and supports retry", async () => {
+  mocks.clarifyIdea
     .mockRejectedValueOnce(
       new ApiError({
         code: "PROVIDER_QUOTA",
@@ -85,67 +88,68 @@ test("provider failure preserves input and supports retry", async () => {
         retryable: false,
       }),
     )
-    .mockResolvedValueOnce(response);
+    .mockResolvedValueOnce(questions);
   await signedIn();
   await userEvent.type(screen.getByLabelText("Your idea"), "Campus teammates");
   await userEvent.click(
-    screen.getByRole("button", { name: "Test AI connection" }),
+    screen.getByRole("button", { name: /Shape my idea/ }),
   );
   expect(await screen.findByRole("alert")).toBeTruthy();
+  await userEvent.click(
+    screen.getByRole("button", { name: /Back to your idea/ }),
+  );
   expect(
     (screen.getByLabelText("Your idea") as HTMLTextAreaElement).value,
   ).toBe("Campus teammates");
   await userEvent.click(
-    screen.getByRole("button", { name: "Retry AI connection" }),
+    screen.getByRole("button", { name: /Shape my idea/ }),
   );
-  expect(await screen.findByText("Private idea summary")).toBeTruthy();
+  expect(await screen.findByText("Who is it for?")).toBeTruthy();
 });
-test("sign-out clears results and pending old-session responses cannot reappear", async () => {
-  let finish: (value: typeof response) => void = () => {};
-  mocks.testConnection.mockImplementation(
+test("sign-out mid-generation discards the late response; accounts stay separate", async () => {
+  let finish: (value: ClarificationQuestion[]) => void = () => {};
+  mocks.clarifyIdea.mockImplementation(
     () =>
-      new Promise((resolve) => {
+      new Promise<ClarificationQuestion[]>((resolve) => {
         finish = resolve;
       }),
   );
   await signedIn();
   await userEvent.type(screen.getByLabelText("Your idea"), "Private idea");
   await userEvent.click(
-    screen.getByRole("button", { name: "Test AI connection" }),
+    screen.getByRole("button", { name: /Shape my idea/ }),
   );
-  expect(
-    (
-      screen.getByRole("button", {
-        name: "Testing AI connection…",
-      }) as HTMLButtonElement
-    ).disabled,
-  ).toBe(true);
   await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
   await act(async () => {
-    finish(response);
+    finish(questions);
   });
   await waitFor(() =>
     expect(
       screen.getByRole("button", { name: "Continue with Google" }),
     ).toBeTruthy(),
   );
-  expect(screen.queryByText("Private idea summary")).toBeNull();
+  expect(screen.queryByText("Who is it for?")).toBeNull();
   await act(async () => {
     mocks.listener?.({ ...user, uid: "two" });
   });
   expect(
     (screen.getByLabelText("Your idea") as HTMLTextAreaElement).value,
   ).toBe("");
-  expect(screen.queryByText("Private idea summary")).toBeNull();
 });
-test("completed output disappears on sign-out", async () => {
-  mocks.testConnection.mockResolvedValue(response);
+test("completed progress is kept per account, not shared across sessions", async () => {
+  mocks.clarifyIdea.mockResolvedValue(questions);
   await signedIn();
   await userEvent.type(screen.getByLabelText("Your idea"), "An idea");
   await userEvent.click(
-    screen.getByRole("button", { name: "Test AI connection" }),
+    screen.getByRole("button", { name: /Shape my idea/ }),
   );
-  await screen.findByText("Private idea summary");
+  await screen.findByText("Who is it for?");
   await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
-  expect(screen.queryByText("Private idea summary")).toBeNull();
+  expect(screen.queryByText("Who is it for?")).toBeNull();
+  await act(async () => {
+    mocks.listener?.({ ...user, uid: "two" });
+  });
+  expect(
+    (screen.getByLabelText("Your idea") as HTMLTextAreaElement).value,
+  ).toBe("");
 });

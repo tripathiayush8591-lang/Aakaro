@@ -42,7 +42,13 @@ The app can render without Firebase configuration; clicking sign-in explains tha
 5. Set backend `FIREBASE_PROJECT_ID` to the same project ID. For local Admin access, create/download a service-account credential from Project settings → Service accounts and store it **outside the repository**. Set `GOOGLE_APPLICATION_CREDENTIALS` to its absolute path. On a Google-managed host, prefer an attached service identity/Application Default Credentials and omit the file setting. The identity needs permission to read Firebase Auth users because verification also checks revocation/disabled users.
 6. Allow browser pop-ups, click Continue with Google, and choose your account. Firebase manages session persistence and ID-token refresh. A refresh restores auth, but diagnostic input/output intentionally is not persisted.
 
-Never put Admin private keys or Gemini keys in `VITE_*` values. Firebase public web configuration is expected in the browser; Admin credentials are not. The backend derives UID exclusively from verified claims for its configured project. There is no auth bypass or emulator configuration in application code.
+Never put Admin private keys or Gemini keys in `VITE_*` values. Firebase public web configuration is expected in the browser; Admin credentials are not. The backend derives UID exclusively from verified claims for its configured project.
+
+**Temporary development settings (auth deferred).** While Firebase sign-in is deferred, two explicit opt-in flags keep the core flow runnable locally. Both default to `false`, must never be enabled in production, and are to be removed when authentication resumes:
+- Backend `DEV_AUTH_ENABLED=true` skips Firebase token verification and uses the fixed local identity `dev-local` instead (see `backend/app/services/auth.py`).
+- Backend `MOCK_PROVIDER_ENABLED=true` swaps Gemini for a deterministic local stand-in (`backend/app/services/mock_ai.py`); the UI labels this mode "Dev preview · mock AI".
+- Frontend `VITE_DEV_AUTH_BYPASS=1` opens the guided workspace without sign-in, and only in a development build when Firebase is unconfigured. It can never appear in a production build.
+There is no other auth bypass or emulator configuration in application code.
 
 ## Gemini and backend settings
 
@@ -57,6 +63,8 @@ Never put Admin private keys or Gemini keys in `VITE_*` values. Firebase public 
 | `USER_REQUEST_LIMIT` | Attempts per verified user per window; default 5 |
 | `USER_WINDOW_SECONDS` | Rate-limit window; default 60 seconds |
 | `CONNECTION_TEST_ENABLED` | Default true; false disables the temporary endpoint |
+| `DEV_AUTH_ENABLED` | TEMPORARY, default false; development-only token-verification bypass while auth is deferred. Never set in production |
+| `MOCK_PROVIDER_ENABLED` | TEMPORARY, default false; development-only deterministic provider stand-in. Never set in production |
 
 Set frontend `VITE_API_BASE_URL=http://localhost:8000` locally. The frontend timeout is 55 seconds. Health and AI connectivity have separate states; only an actual successful AI response marks AI connected.
 
@@ -73,6 +81,14 @@ Choose the model in [Google AI Studio](https://aistudio.google.com/) or the [mod
 ```
 
 The idea is trimmed and must contain 1–1,000 characters. Extra request fields (including user IDs) are rejected. The success envelope contains `summary`, `possibleAudience`, and `clarifyingQuestion` in `data`; each is a nonempty string with a maximum of 1,200 characters.
+
+`POST /api/idea/clarify` (same auth requirement) takes `{requestId, idea}` and returns exactly three questions: `data.questions[]` with `id` (`q1`–`q3`, canonicalized server-side), `question` (≤300 chars), and `reason` (≤300 chars).
+
+`POST /api/strategy/generate` takes `{requestId, idea, clarifications}` with exactly three `{question, answer}` pairs (answers ≤1,200 chars) and returns a structured brief in `data`: `oneLiner`, `audience {primary, description}`, `problem`, `promise`, `differentiation`, `personality` (exactly 3), `positioning`, and `namingTerritories` (2–4).
+
+`POST /api/naming/candidates` takes `{requestId, strategy}` (the confirmed brief) and returns exactly five naming candidates in `data.candidates[]` with `id` (`n1`–`n5`, canonicalized server-side), `name` (≤40 chars, five distinct names), `rationale` (≤300), `territory` (≤80), and optional `linguisticNote` (≤200). Duplicate ids or case-insensitively duplicate names are repaired once, then rejected.
+
+`POST /api/naming/evaluate` takes `{requestId, strategy, candidates}` (the five actually generated candidates) and returns `data.evaluations[]` — exactly five entries referencing the submitted ids with 1–5 integer `scores` (`distinctiveness`, `strategicFit`, `memorability`, `extensibility`), one to three `strengths` and `risks` (each ≤120 chars), and a `verdict` (≤300). Evaluations must cover exactly the submitted candidate ids; coverage failures are repaired once, then rejected. The client shortlists exactly two; the remaining three are recorded in The Graveyard with their stored evaluation.
 
 ```json
 { "requestId": "...", "error": { "code": "PROVIDER_TIMEOUT", "message": "AI took too long. Please try again.", "retryable": true } }
