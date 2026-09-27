@@ -15,6 +15,7 @@ from app.api.brand_kit import router as brand_kit_router
 from app.api.connection import router
 from app.api.directions import router as directions_router
 from app.api.naming import router as naming_router
+from app.api.spellcheck import router as spellcheck_router
 from app.api.strategy import router as strategy_router
 from app.core.config import Settings
 from app.core.errors import AppError
@@ -111,7 +112,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "Check the request: a request ID, an idea between 1 and 1,000 "
                 "characters, exactly three clarification questions with answers, "
                 "five naming candidates or evaluations with distinct matching "
-                "IDs, and no unknown fields are required.",
+                "IDs, spellcheck content between 1 and 8,000 characters, "
+                "and no unknown fields are required.",
             ),
         )
 
@@ -133,6 +135,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(naming_router)
     app.include_router(directions_router)
     app.include_router(brand_kit_router)
+    app.include_router(spellcheck_router)
     return app
 
 

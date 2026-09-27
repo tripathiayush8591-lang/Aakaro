@@ -1,13 +1,17 @@
 import { kitFoundation, parseBrandKit } from "./brandKit";
 import type {
   AakaroProject,
+  BrandKit,
   NamingCandidate,
   NamingEvaluation,
   NamingState,
+  SpellcheckReviewRecord,
+  SpellcheckState,
   StrategyBrief,
 } from "../types/project";
 import { parseDirections } from "./directions";
-import { emptyNamingState } from "../types/project";
+import { emptyNamingState, emptySpellcheckState } from "../types/project";
+import { CONTENT_MAX, validStoredSpellcheckReview } from "./spellcheck";
 
 /**
  * Browser-local persistence for the single active project, namespaced per
@@ -250,6 +254,46 @@ function parseNaming(value: unknown): NamingState | null {
   };
 }
 
+/**
+ * Phase 6 migration: a missing block defaults to empty so pre-spellcheck
+ * projects keep loading. An interrupted review normalizes to its retryable
+ * state, and a stored review is only accepted together with the confirmed kit
+ * it references. Stale reviews (quotes from an older content revision) are
+ * structurally valid and keep their stale flag.
+ */
+function parseSpellcheck(value: unknown, kit: BrandKit | null): SpellcheckState | null {
+  if (value === undefined || value === null) return emptySpellcheckState();
+  if (typeof value !== "object") return null;
+  const s = value as Record<string, unknown>;
+  const rawStatus = typeof s.status === "string" ? s.status : "";
+  const status = rawStatus === "reviewing" ? "ready" : rawStatus;
+  if (status !== "idle" && status !== "ready" && status !== "complete") return null;
+  const content = (v: unknown) => typeof v === "string" && v.length <= CONTENT_MAX;
+  if (!content(s.originalContent) || !content(s.workingContent)) return null;
+  if (
+    typeof s.contentRevision !== "number" ||
+    !Number.isInteger(s.contentRevision) ||
+    s.contentRevision < 0
+  )
+    return null;
+  if (status === "idle" && (s.originalContent !== "" || s.workingContent !== ""))
+    return null;
+  if (status === "complete" && typeof s.confirmedAt !== "string") return null;
+  const base = {
+    originalContent: s.originalContent as string,
+    workingContent: s.workingContent as string,
+    status: status as SpellcheckState["status"],
+    contentRevision: s.contentRevision as number,
+    ...(status === "complete" ? { confirmedAt: s.confirmedAt as string } : {}),
+  };
+  if (s.review === undefined || s.review === null) return { ...base, review: null };
+  // A review that no longer matches the confirmed kit is dropped, but the
+  // pasted content survives — never discard the user's own work over it.
+  if (status === "idle" || !kit || !validStoredSpellcheckReview(s.review, kit))
+    return { ...base, review: null };
+  return { ...base, review: s.review as unknown as SpellcheckReviewRecord };
+}
+
 /** Tolerant validator: accepts only well-formed projects, null otherwise. */
 export function parseProject(value: unknown): AakaroProject | null {
   if (typeof value !== "object" || value === null) return null;
@@ -317,6 +361,8 @@ export function parseProject(value: unknown): AakaroProject | null {
   const brandKit = parseBrandKit(p.brandKit, foundation?.candidate.name);
   if (!brandKit || (brandKit.status !== "idle" && !foundation)) return null;
   if (p.currentStage === "spellcheck" && brandKit.status !== "confirmed") return null;
+  const spellcheck = parseSpellcheck(p.spellcheck, brandKit.confirmed ?? null);
+  if (!spellcheck) return null;
   return {
     schemaVersion: 1,
     id: p.id,
@@ -346,6 +392,7 @@ export function parseProject(value: unknown): AakaroProject | null {
     naming,
     directions,
     brandKit,
+    spellcheck,
   };
 }
 

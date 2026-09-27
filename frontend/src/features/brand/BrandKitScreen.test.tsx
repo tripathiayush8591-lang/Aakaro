@@ -69,19 +69,20 @@ test("edits persist, preview updates, invalid HEX stays unsaved and blocks confi
   expect(parseProject(stored())?.brandKit.draft?.rules[0].rationale).toBe("");
 });
 
-test("clay modal cancels, confirms and restores Spellcheck-ready; unlock preserves edits", async () => {
+test("clay modal cancels, confirms and hands over to Spellcheck; unlock preserves edits", async () => {
   const view = mount(editingProject());
   await userEvent.click(screen.getByRole("button", { name: /Confirm brand kit/ }));
   await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }));
   expect(stored().brandKit.confirmed).toBeNull();
   await userEvent.click(screen.getByRole("button", { name: /Confirm brand kit/ }));
   await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: /Confirm brand kit/ }));
-  expect(screen.getByText("Spellcheck-ready.")).toBeTruthy();
+  expect(screen.getByText("Check content against your rules.")).toBeTruthy();
   expect(stored().brandKit.confirmed).toEqual(kit);
   expect(stored().brandKit.confirmedAt).toEqual(expect.any(String));
   expect(stored().currentStage).toBe("spellcheck");
   view.unmount(); render(<Workspace session={session} user={null} authDeferred />);
-  expect(screen.getByText("Spellcheck-ready.")).toBeTruthy();
+  expect(screen.getByText("Check content against your rules.")).toBeTruthy();
+  await userEvent.click(screen.getByRole("button", { name: "Back to brand kit" }));
   await userEvent.click(screen.getByRole("button", { name: "Edit brand kit" }));
   expect(stored().brandKit.confirmed).toBeNull();
   expect(screen.getByLabelText("Tagline")).toHaveProperty("value", kit.identity.tagline);

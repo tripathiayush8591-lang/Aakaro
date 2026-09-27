@@ -115,6 +115,7 @@ export interface AakaroProject {
   naming: NamingState;
   directions: DirectionsState;
   brandKit: BrandKitState;
+  spellcheck: SpellcheckState;
 }
 
 export interface BrandDirection {
@@ -198,4 +199,56 @@ export interface BrandKitState {
 }
 export function emptyBrandKitState(): BrandKitState {
   return { draft: null, confirmed: null, status: "idle" };
+}
+
+/** Phase 6 — Brand Spellcheck: rule-linked review of pasted content. */
+
+export interface SpellcheckIssue {
+  id: string;
+  source: "deterministic" | "ai";
+  ruleId: string;
+  severity: "low" | "medium" | "high";
+  category: "voice" | "language" | "messaging" | "visual" | "consistency";
+  originalText: string;
+  start?: number;
+  end?: number;
+  explanation: string;
+  suggestion: string;
+  replacement?: string;
+}
+
+export interface SpellcheckReview {
+  summary: string;
+  issues: SpellcheckIssue[];
+  passedRuleIds: string[];
+  aiReviewed: boolean;
+  reviewedAt: string;
+}
+
+/** The stored review additionally tracks whether the content changed since. */
+export interface SpellcheckReviewRecord extends SpellcheckReview {
+  stale: boolean;
+}
+
+export type SpellcheckStatus = "idle" | "reviewing" | "ready" | "complete";
+
+export interface SpellcheckState {
+  /** The content exactly as first pasted; never rewritten by fixes. */
+  originalContent: string;
+  /** The editable copy the user works on. */
+  workingContent: string;
+  review: SpellcheckReviewRecord | null;
+  status: SpellcheckStatus;
+  contentRevision: number;
+  confirmedAt?: string;
+}
+
+export function emptySpellcheckState(): SpellcheckState {
+  return {
+    originalContent: "",
+    workingContent: "",
+    review: null,
+    status: "idle",
+    contentRevision: 0,
+  };
 }

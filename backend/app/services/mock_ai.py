@@ -9,6 +9,7 @@ import asyncio
 
 from app.schemas.brand_kit import BrandKit
 from app.schemas.connection import ConnectionResult
+from app.schemas.spellcheck import SpellcheckIssue, SpellcheckReviewResult
 from app.schemas.stages import (
     BrandDirection,
     ClarificationPair,
@@ -146,6 +147,23 @@ _SCORES = (
     {"distinctiveness": 3, "strategicFit": 4, "memorability": 3, "extensibility": 4},
     {"distinctiveness": 4, "strategicFit": 5, "memorability": 4, "extensibility": 3},
 )
+
+# Development fixture: plain swaps for a few common inflated words so mock
+# reviews can offer a concrete replacement. Phrases without an entry are
+# reported without one.
+_PLAIN_SWAPS = {
+    "revolutionary": "new",
+    "game-changing": "useful",
+    "best-in-class": "strong",
+    "cutting-edge": "modern",
+    "disruptive": "different",
+    "world-class": "solid",
+    "seamless": "smooth",
+    "leverage": "use",
+    "synergy": "teamwork",
+    "effortless": "simple",
+    "10x": "much faster",
+}
 
 
 class MockAakaroAI:
@@ -348,6 +366,56 @@ class MockAakaroAI:
             "rules": [{"id": f"rule{i}", "category": category, "rule": rule, "rationale": why}
                       for i, (category, rule, why) in enumerate(rules, 1)],
         })
+
+    async def spellcheck_review(
+        self, kit: BrandKit, content: str, deterministic: list[SpellcheckIssue],
+    ) -> SpellcheckReviewResult:
+        """Deterministic stand-in: reviews the actual submitted kit and content.
+
+        The rule-based findings computed from the same kit/content are echoed
+        back as AI-review issues, with a concrete replacement when the mock's
+        plain-swap table covers the phrase. Compliant content yields an empty
+        issue list and every rule id as passed — never unrelated fixed issues.
+        """
+        await self._delay()
+        if not deterministic:
+            # The mock stays self-sufficient: even without route-computed
+            # findings it reviews the actual submitted kit and content.
+            from app.services.spellcheck import find_deterministic_issues
+
+            deterministic = find_deterministic_issues(kit, content)
+        rules = {rule.id: rule.rule for rule in kit.rules}
+        issues = []
+        for issue in deterministic[:3]:
+            swap = _PLAIN_SWAPS.get(issue.originalText.casefold())
+            replacement = None
+            if swap is not None:
+                replacement = (
+                    swap.capitalize() if issue.originalText[:1].isupper() else swap
+                )
+            issues.append({
+                "ruleId": issue.ruleId,
+                "severity": issue.severity,
+                "category": issue.category,
+                "originalText": issue.originalText,
+                "explanation": (
+                    f"(Mock review) '{issue.originalText}' conflicts with "
+                    f"{issue.ruleId}: {rules[issue.ruleId]}"
+                )[:400],
+                "suggestion": "Use plain wording that fits the confirmed voice.",
+                "replacement": replacement,
+            })
+        failed = {issue["ruleId"] for issue in issues}
+        summary = (
+            f"(Mock review) {len(issues)} phrase(s) conflict with your confirmed rules."
+            if issues
+            else "(Mock review) The content follows the confirmed rules in your kit."
+        )
+        return SpellcheckReviewResult(
+            summary=summary,
+            issues=issues,
+            passedRuleIds=[rule.id for rule in kit.rules if rule.id not in failed],
+        )
 
     async def close(self) -> None:
         return None

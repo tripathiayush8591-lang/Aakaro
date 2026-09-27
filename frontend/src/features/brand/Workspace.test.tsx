@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   generateStrategy: vi.fn(),
   generateNamingCandidates: vi.fn(),
   evaluateNamingCandidates: vi.fn(),
+  reviewSpellcheck: vi.fn(),
 }));
 vi.mock("../../lib/api", () => ({
   ApiError: class extends Error {
@@ -20,6 +21,7 @@ vi.mock("../../lib/api", () => ({
   generateStrategy: mocks.generateStrategy,
   generateNamingCandidates: mocks.generateNamingCandidates,
   evaluateNamingCandidates: mocks.evaluateNamingCandidates,
+  reviewSpellcheck: mocks.reviewSpellcheck,
 }));
 import { Workspace } from "./Workspace";
 import type {
@@ -29,6 +31,7 @@ import type {
   NamingEvaluation,
   StrategyBrief,
 } from "../../types/project";
+import { emptySpellcheckState } from "../../types/project";
 import { projectKey } from "../../lib/storage";
 
 const UID = "dev-local";
@@ -103,6 +106,7 @@ function savedProject(overrides: Partial<AakaroProject>): AakaroProject {
     naming: namingState(),
     brandKit: { draft: null, confirmed: null, status: "idle" },
     directions: { items: [], selectedDirectionId: null, status: "idle" },
+    spellcheck: emptySpellcheckState(),
   };
   return { ...base, ...overrides } as AakaroProject;
 }

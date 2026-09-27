@@ -15,8 +15,10 @@ from app.schemas.stages import BrandDirection
 from app.prompts.clarify import CLARIFY_SYSTEM
 from app.prompts.directions import DIRECTIONS_SYSTEM
 from app.prompts.naming import NAMING_CANDIDATES_SYSTEM, NAMING_EVALUATION_SYSTEM
+from app.prompts.spellcheck import SPELLCHECK_SYSTEM
 from app.prompts.strategy import STRATEGY_SYSTEM
 from app.schemas.connection import ConnectionResult
+from app.schemas.spellcheck import SpellcheckIssue, SpellcheckReviewResult
 from app.schemas.stages import (
     ClarificationPair,
     ClarifyResult,
@@ -251,6 +253,37 @@ class GeminiService:
             rule.model_copy(update={"id": f"rule{i}"})
             for i, rule in enumerate(kit.rules, 1)
         ]})
+
+    async def spellcheck_review(
+        self, kit: BrandKit, content: str, deterministic: list[SpellcheckIssue],
+    ) -> SpellcheckReviewResult:
+        rule_ids = {rule.id for rule in kit.rules}
+
+        def grounded(result: SpellcheckReviewResult) -> str | None:
+            for issue in result.issues:
+                if issue.ruleId not in rule_ids:
+                    return "rule IDs"
+                if issue.originalText.casefold() not in content.casefold():
+                    return "issue quotes"
+            if not set(result.passedRuleIds) <= rule_ids:
+                return "passed rule IDs"
+            return None
+
+        payload = {
+            "brandKit": kit.model_dump(),
+            "content": content,
+            "alreadyReported": [
+                {"ruleId": issue.ruleId, "originalText": issue.originalText}
+                for issue in deterministic
+            ],
+        }
+        return await self._structured_call(
+            system=SPELLCHECK_SYSTEM,
+            contents=json.dumps(payload),
+            schema=SpellcheckReviewResult,
+            max_output_tokens=3072,
+            check=grounded,
+        )
 
     async def close(self) -> None:
         if self.client:

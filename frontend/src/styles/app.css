@@ -1466,3 +1466,233 @@ p {
   .kit-selects { grid-template-columns: minmax(0, 1fr); }
   .kit-preview h3 { margin-top: 42px; }
 }
+
+/* ---------- Phase 6: Brand Spellcheck ---------- */
+.spellcheck-head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.spellcheck-status {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--surface-inset);
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.spellcheck-status.status-reviewing {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+.spellcheck-status.status-complete {
+  background: var(--accent-lime-soft);
+  border-color: transparent;
+}
+.status-line {
+  margin: var(--space-2) 0 0;
+}
+.spellcheck-degraded {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-inset);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+}
+.spellcheck-bento {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+@media (min-width: 1024px) {
+  .spellcheck-bento {
+    grid-template-columns: 3fr 2fr;
+    align-items: start;
+  }
+}
+.spellcheck-input {
+  width: 100%;
+  min-height: 300px;
+  resize: vertical;
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+  color: inherit;
+  font: inherit;
+  line-height: 1.6;
+}
+.spellcheck-input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.spellcheck-input:disabled {
+  opacity: 0.75;
+}
+:root[data-theme="dark"] .spellcheck-input {
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.spellcheck-editor-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  flex-wrap: wrap;
+}
+.spellcheck-original {
+  margin-top: var(--space-3);
+}
+.spellcheck-original summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.spellcheck-original p {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-3);
+  background: var(--surface-inset);
+  border-radius: var(--radius-md);
+  white-space: pre-wrap;
+  font-size: 0.92rem;
+}
+.spellcheck-issues {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.spellcheck-issue {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+.spellcheck-issue blockquote {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--primary);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--surface-inset);
+}
+.spellcheck-issue blockquote small {
+  display: block;
+  margin-top: 2px;
+  opacity: 0.7;
+}
+.issue-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.severity-chip,
+.category-chip,
+.rule-chip {
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-inset);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.severity-chip.severity-high {
+  background: var(--error-surface);
+  border-color: transparent;
+}
+.severity-chip.severity-medium {
+  background: var(--accent-peach-soft);
+  border-color: transparent;
+}
+.severity-chip.severity-low {
+  background: var(--accent-lime-soft);
+  border-color: transparent;
+}
+.issue-rule-text,
+.issue-explanation,
+.issue-suggestion,
+.issue-replacement {
+  margin: 0;
+  font-size: 0.93rem;
+}
+.issue-suggestion {
+  font-weight: 600;
+}
+.issue-replacement code {
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-inset);
+}
+.spellcheck-clear {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--accent-lime-soft);
+}
+.spellcheck-clear h3 {
+  margin: 0 0 var(--space-1);
+}
+.spellcheck-clear p {
+  margin: 0;
+}
+.spellcheck-stale-note {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+  font-size: 0.92rem;
+}
+.spellcheck-decision {
+  margin-top: var(--space-4);
+}
+.spellcheck-decision p {
+  margin: var(--space-2) 0 var(--space-3);
+}
+.spellcheck-foot {
+  margin-top: var(--space-4);
+}
+
+@media print {
+  .navbar,
+  .stage-rail,
+  .clay-modal,
+  .spellcheck-foot,
+  .spellcheck-editor-foot,
+  .spellcheck-issue button {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+  .app-main {
+    max-width: none;
+    padding: 0;
+  }
+  .clay,
+  .tile {
+    box-shadow: none !important;
+    border: 1px solid #d8d3c8;
+    background: #fff;
+    break-inside: avoid;
+  }
+  .spellcheck-input {
+    min-height: 0;
+    resize: none;
+    border: none;
+    background: #fff;
+  }
+  .spellcheck-bento {
+    grid-template-columns: 1fr;
+  }
+}

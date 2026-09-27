@@ -9,8 +9,10 @@ import type {
   ClarificationQuestion,
   NamingCandidate,
   NamingEvaluation,
+  SpellcheckReview,
   StrategyBrief,
 } from "../types/project";
+import { validSpellcheckReview } from "./spellcheck";
 
 export class ApiError extends Error {
   constructor(
@@ -387,4 +389,17 @@ export async function generateBrandKit(
     throw new ApiError(invalidAIResponse, result.requestId);
   }
   return kit;
+}
+
+export async function reviewSpellcheck(
+  brandKit: BrandKit,
+  content: string,
+  user: User | null,
+  signal: AbortSignal,
+): Promise<SpellcheckReview> {
+  const result = await request("/api/spellcheck/review", user, signal, { brandKit, content });
+  if (!validSpellcheckReview(result.data, brandKit, content)) {
+    throw new ApiError(invalidAIResponse, result.requestId);
+  }
+  return result.data as unknown as SpellcheckReview;
 }

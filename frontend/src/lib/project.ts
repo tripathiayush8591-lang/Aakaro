@@ -9,7 +9,9 @@ import type {
   NamingEvaluation,
   StrategyBrief,
 } from "../types/project";
-import { emptyNamingState, emptyDirectionsState, emptyBrandKitState } from "../types/project";
+import { emptyNamingState, emptyDirectionsState, emptyBrandKitState, emptySpellcheckState } from "../types/project";
+import type { SpellcheckReviewRecord } from "../types/project";
+import { CONTENT_MAX, validSpellcheckReview } from "./spellcheck";
 import { validDirections } from "./directions";
 import { loadProject, saveProject } from "./storage";
 
@@ -28,6 +30,7 @@ export function createProject(): AakaroProject {
     naming: emptyNamingState(),
     directions: emptyDirectionsState(),
     brandKit: emptyBrandKitState(),
+    spellcheck: emptySpellcheckState(),
   };
 }
 
@@ -71,6 +74,19 @@ export type ProjectAction =
   | { type: "confirmBrandKit"; confirmedAt: string }
   | { type: "unlockBrandKit" }
   | { type: "backToDirections" }
+  | { type: "continueToSpellcheck" }
+  | { type: "backToBrandKit" }
+  | { type: "spellcheckEditContent"; text: string }
+  | { type: "spellcheckReviewStart"; expectedRevision: number }
+  | {
+      type: "spellcheckReviewSuccess";
+      review: SpellcheckReviewRecord;
+      expectedRevision: number;
+    }
+  | { type: "spellcheckReviewFailure"; expectedRevision: number }
+  | { type: "spellcheckApplyFix"; issueId: string; nextContent: string }
+  | { type: "spellcheckComplete"; confirmedAt: string }
+  | { type: "spellcheckNewContent" }
   | { type: "reset" };
 
 function commit(
@@ -106,6 +122,7 @@ export function projectReducer(
         naming: emptyNamingState(),
         directions: emptyDirectionsState(),
         brandKit: emptyBrandKitState(),
+        spellcheck: emptySpellcheckState(),
       });
     }
     case "enterClarification": {
@@ -159,6 +176,7 @@ export function projectReducer(
         naming: emptyNamingState(),
         directions: emptyDirectionsState(),
         brandKit: emptyBrandKitState(),
+        spellcheck: emptySpellcheckState(),
       });
     }
     case "reviseAnswers":
@@ -168,6 +186,7 @@ export function projectReducer(
         naming: emptyNamingState(),
         directions: emptyDirectionsState(),
         brandKit: emptyBrandKitState(),
+        spellcheck: emptySpellcheckState(),
       });
     case "confirmStrategy": {
       if (!state.strategy.draft) return state;
@@ -188,6 +207,7 @@ export function projectReducer(
         naming: emptyNamingState(),
         directions: emptyDirectionsState(),
         brandKit: emptyBrandKitState(),
+        spellcheck: emptySpellcheckState(),
       });
     case "namingCandidatesSuccess": {
       if (
@@ -200,6 +220,7 @@ export function projectReducer(
       return commit(state, {
         directions: emptyDirectionsState(),
         brandKit: emptyBrandKitState(),
+        spellcheck: emptySpellcheckState(),
         naming: {
           candidates: action.candidates,
           evaluations: [],
@@ -245,7 +266,7 @@ export function projectReducer(
           ? [...naming.selectedIds, action.candidateId]
           : naming.selectedIds;
       if (selectedIds === naming.selectedIds) return state;
-      return commit(state, { naming: { ...naming, selectedIds }, directions: emptyDirectionsState(), brandKit: emptyBrandKitState() });
+      return commit(state, { naming: { ...naming, selectedIds }, directions: emptyDirectionsState(), brandKit: emptyBrandKitState(), spellcheck: emptySpellcheckState() });
     }
     case "confirmNaming": {
       const { naming } = state;
@@ -276,6 +297,7 @@ export function projectReducer(
         naming: { ...state.naming, generationStatus: "ready", graveyardIds: [], confirmedAt: undefined },
         directions: emptyDirectionsState(),
         brandKit: emptyBrandKitState(),
+        spellcheck: emptySpellcheckState(),
       });
     case "directionsStart":
       if (state.revision !== action.expectedRevision || state.currentStage !== "directions" ||
@@ -290,11 +312,11 @@ export function projectReducer(
       } });
     case "directionsFailure":
       if (state.revision !== action.expectedRevision || state.directions.status !== "generating") return state;
-      return commit(state, { directions: emptyDirectionsState(), brandKit: emptyBrandKitState() });
+      return commit(state, { directions: emptyDirectionsState(), brandKit: emptyBrandKitState(), spellcheck: emptySpellcheckState() });
     case "selectDirection":
       if (state.currentStage !== "directions" || state.directions.status !== "ready" ||
         !state.directions.items.some(d => d.id === action.id)) return state;
-      return commit(state, { directions: { ...state.directions, selectedDirectionId: action.id }, brandKit: emptyBrandKitState() });
+      return commit(state, { directions: { ...state.directions, selectedDirectionId: action.id }, brandKit: emptyBrandKitState(), spellcheck: emptySpellcheckState() });
     case "confirmDirection":
       if (state.currentStage !== "directions" || state.directions.status !== "ready" ||
         !state.strategy.confirmed || state.naming.generationStatus !== "confirmed" ||
@@ -306,7 +328,7 @@ export function projectReducer(
     case "unlockDirection":
       // Direction unlock invalidates the kit and its confirmed rules.
       if (state.directions.status !== "confirmed") return state;
-      return commit(state, { currentStage: "directions", brandKit: emptyBrandKitState(), directions: {
+      return commit(state, { currentStage: "directions", brandKit: emptyBrandKitState(), spellcheck: emptySpellcheckState(), directions: {
         ...state.directions, status: "ready", confirmedAt: undefined,
       } });
     case "backToDirections":
@@ -336,14 +358,98 @@ export function projectReducer(
       const foundation = kitFoundation(state);
       if (state.currentStage !== "brand-kit" || !["editing", "ready"].includes(state.brandKit.status) ||
         !foundation || !validBrandKit(state.brandKit.draft, foundation.candidate.name)) return state;
-      return commit(state, { currentStage: "spellcheck", brandKit: { ...state.brandKit,
+      return commit(state, { currentStage: "spellcheck", spellcheck: emptySpellcheckState(), brandKit: { ...state.brandKit,
         confirmed: structuredClone(state.brandKit.draft), status: "confirmed", confirmedAt: action.confirmedAt } });
     }
     case "unlockBrandKit":
       if (state.brandKit.status !== "confirmed" || !state.brandKit.confirmed) return state;
-      // Phase 6 must clear both review modes here; no review results exist yet.
-      return commit(state, { currentStage: "brand-kit", brandKit: { ...state.brandKit,
+      // Edited rules invalidate every spellcheck finding tied to the old kit.
+      return commit(state, { currentStage: "brand-kit", spellcheck: emptySpellcheckState(), brandKit: { ...state.brandKit,
         draft: structuredClone(state.brandKit.confirmed), confirmed: null, confirmedAt: undefined, status: "editing" } });
+    case "continueToSpellcheck":
+      if (state.brandKit.status !== "confirmed" || !state.brandKit.confirmed) return state;
+      return commit(state, { currentStage: "spellcheck" });
+    case "backToBrandKit":
+      // Navigation only: the confirmed kit is untouched, so spellcheck state stays.
+      if (state.brandKit.status !== "confirmed") return state;
+      return commit(state, { currentStage: "brand-kit" });
+    case "spellcheckEditContent": {
+      const spellcheck = state.spellcheck;
+      if (state.currentStage !== "spellcheck" || !state.brandKit.confirmed ||
+        (spellcheck.status !== "idle" && spellcheck.status !== "ready" && spellcheck.status !== "reviewing") ||
+        action.text.length > CONTENT_MAX ||
+        (spellcheck.status === "idle" && !action.text.trim()) ||
+        (spellcheck.status !== "idle" && action.text === spellcheck.workingContent))
+        return state;
+      // The first paste records the untouched original; every later edit moves
+      // only the working copy and marks any existing review stale.
+      return commit(state, {
+        spellcheck: {
+          originalContent: spellcheck.status === "idle" ? action.text : spellcheck.originalContent,
+          workingContent: action.text,
+          review: spellcheck.review ? { ...spellcheck.review, stale: true } : null,
+          status: "ready",
+          contentRevision: spellcheck.contentRevision + 1,
+        },
+      });
+    }
+    case "spellcheckReviewStart": {
+      const spellcheck = state.spellcheck;
+      if (state.revision !== action.expectedRevision || state.currentStage !== "spellcheck" ||
+        !state.brandKit.confirmed || spellcheck.status !== "ready" ||
+        !spellcheck.workingContent.trim())
+        return state;
+      return commit(state, { spellcheck: { ...spellcheck, status: "reviewing" } });
+    }
+    case "spellcheckReviewSuccess": {
+      const kit = state.brandKit.confirmed;
+      const spellcheck = state.spellcheck;
+      // Commits only while still reviewing, at the revision the request left
+      // behind, and when every quote still grounds in the working content —
+      // edits made during the request make the response a discarded no-op.
+      if (state.revision !== action.expectedRevision || state.currentStage !== "spellcheck" ||
+        !kit || spellcheck.status !== "reviewing" ||
+        !validSpellcheckReview(action.review, kit, spellcheck.workingContent))
+        return state;
+      return commit(state, {
+        spellcheck: { ...spellcheck, review: { ...action.review, stale: false }, status: "ready" },
+      });
+    }
+    case "spellcheckReviewFailure":
+      if (state.revision !== action.expectedRevision || state.spellcheck.status !== "reviewing")
+        return state;
+      return commit(state, { spellcheck: { ...state.spellcheck, status: "ready" } });
+    case "spellcheckApplyFix": {
+      const spellcheck = state.spellcheck;
+      if (state.currentStage !== "spellcheck" || !state.brandKit.confirmed ||
+        spellcheck.status !== "ready" || !spellcheck.review ||
+        !spellcheck.review.issues.some((issue) => issue.id === action.issueId) ||
+        action.nextContent.length > CONTENT_MAX ||
+        action.nextContent === spellcheck.workingContent)
+        return state;
+      // Only the working copy moves; the original paste is never rewritten and
+      // the review goes stale so the next check validates the fixed content.
+      return commit(state, {
+        spellcheck: {
+          ...spellcheck,
+          workingContent: action.nextContent,
+          contentRevision: spellcheck.contentRevision + 1,
+          review: { ...spellcheck.review, stale: true },
+        },
+      });
+    }
+    case "spellcheckComplete": {
+      const spellcheck = state.spellcheck;
+      if (state.currentStage !== "spellcheck" || spellcheck.status !== "ready" ||
+        !spellcheck.workingContent.trim() || !spellcheck.review || spellcheck.review.stale)
+        return state;
+      return commit(state, {
+        spellcheck: { ...spellcheck, status: "complete", confirmedAt: action.confirmedAt },
+      });
+    }
+    case "spellcheckNewContent":
+      if (state.currentStage !== "spellcheck" || !state.brandKit.confirmed) return state;
+      return commit(state, { spellcheck: emptySpellcheckState() });
     case "reset":
       return createProject();
     default:
