@@ -27,12 +27,19 @@ function initializeAuth(): Auth | null {
 export const auth = initializeAuth();
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: "select_account" });
+let loginInProgress = false;
 export async function login() {
   if (!auth)
     throw new Error(
       "Sign-in is not configured yet. Please contact the app owner.",
     );
-  await signInWithPopup(auth, provider);
+  if (loginInProgress) return;
+  loginInProgress = true;
+  try {
+    await signInWithPopup(auth, provider);
+  } finally {
+    loginInProgress = false;
+  }
 }
 export async function logout() {
   if (auth) await signOut(auth);
@@ -51,6 +58,8 @@ export function authMessage(error: unknown): string {
     return "Allow pop-ups for this site, then try Google sign-in again.";
   if (code === "auth/network-request-failed")
     return "Check your internet connection and try again.";
+  if (code === "auth/unauthorized-domain")
+    return "This domain is not authorized for Google sign-in. Check Firebase configuration.";
   if (!auth)
     return "Sign-in is not configured yet. Please contact the app owner.";
   return "Sign-in could not be completed. Try again, or contact the app owner if this continues.";

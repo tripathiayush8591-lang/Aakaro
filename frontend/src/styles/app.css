@@ -248,9 +248,23 @@ p {
 }
 .session {
   display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+.session-info {
+  display: flex;
   flex-direction: column;
   align-items: flex-end;
   line-height: 1.3;
+}
+.session-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 .session-name {
   font-family: var(--font-display);

@@ -100,10 +100,20 @@ export function Workspace({
               Start over
             </button>
             <div className="session">
-              <span className="session-name">{session.displayName}</span>
-              {session.email && (
-                <small className="session-detail">{session.email}</small>
+              {session.photoURL && (
+                <img
+                  className="session-avatar"
+                  src={session.photoURL}
+                  alt={session.displayName}
+                  referrerPolicy="no-referrer"
+                />
               )}
+              <div className="session-info">
+                <span className="session-name">{session.displayName}</span>
+                {session.email && (
+                  <small className="session-detail">{session.email}</small>
+                )}
+              </div>
             </div>
             {onLogout && (
               <button

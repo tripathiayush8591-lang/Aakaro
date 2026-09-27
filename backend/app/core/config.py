@@ -1,6 +1,6 @@
 from urllib.parse import urlsplit
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,6 +19,17 @@ class Settings(BaseSettings):
     dev_auth_enabled: bool = False
     # Development-only deterministic provider stand-in; never enable in production.
     mock_provider_enabled: bool = False
+
+    @model_validator(mode="after")
+    def production_guard(self) -> "Settings":
+        import os
+
+        env = os.environ.get("ENVIRONMENT", "").lower()
+        if env in {"production", "prod"} and self.dev_auth_enabled:
+            raise ValueError(
+                "DEV_AUTH_ENABLED cannot be enabled in production environments"
+            )
+        return self
 
     @field_validator("cors_origins")
     @classmethod

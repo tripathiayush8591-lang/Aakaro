@@ -72,13 +72,48 @@ Frontend:
 
 `VITE_API_BASE_URL`, `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`, `VITE_DEV_AUTH_BYPASS`
 
+## Firebase Authentication Setup
+
+### Environment Variables
+
+**Frontend (`frontend/.env.local` - local ignored only):**
+- `VITE_API_BASE_URL`: Backend base address (e.g. `http://localhost:8000`)
+- `VITE_FIREBASE_API_KEY`: Public Firebase Web API Key
+- `VITE_FIREBASE_AUTH_DOMAIN`: Firebase Auth Domain (`<project-id>.firebaseapp.com`)
+- `VITE_FIREBASE_PROJECT_ID`: Firebase Project ID
+- `VITE_FIREBASE_APP_ID`: Firebase Web App ID
+- `VITE_DEV_AUTH_BYPASS`: Optional dev-only bypass flag (leave empty/omitted for real auth)
+
+**Backend (`backend/.env` - local ignored only):**
+- `FIREBASE_PROJECT_ID`: Firebase Project ID
+- `GOOGLE_APPLICATION_CREDENTIALS`: Path to service account JSON file (or host Application Default Credentials)
+- `DEV_AUTH_ENABLED`: Set to `false` for real Firebase Admin verification (defaults to `false`)
+- `CORS_ORIGINS`: Allowed origins array (e.g. `["http://localhost:5173"]`)
+
 Never commit `.env`, `.env.local`, Firebase service-account JSON, or API keys. Gemini keys and Firebase Admin credentials must remain server-side; Firebase web configuration is public browser configuration.
 
-## Real Gemini and Firebase
+### Firebase Console Setup
+1. **Google Provider:** In Firebase Console > Authentication > Sign-in method, enable the **Google** provider.
+2. **Authorized Domains:** In Authentication > Settings > Authorized domains, confirm `localhost` is listed.
+3. **Web App:** Register a Web App under Project Settings to obtain the 4 public `VITE_FIREBASE_*` values.
+4. **Service Account Credentials:** Under Project Settings > Service accounts, generate a new private key and reference the path via `GOOGLE_APPLICATION_CREDENTIALS` (or use host ADC).
 
-To test Gemini, configure `GEMINI_API_KEY` and an available structured-output `GEMINI_MODEL`, then set `MOCK_PROVIDER_ENABLED=false`. The backend keeps provider failures safe and preserves the existing project state; it does not silently fall back to mock output.
+### Running in Real Auth Mode (Default)
+1. **Frontend:** Configure the 4 `VITE_FIREBASE_*` values in `frontend/.env.local`. Keep `VITE_DEV_AUTH_BYPASS` unset or empty.
+2. **Backend:** In `backend/.env`, set `FIREBASE_PROJECT_ID`, `GOOGLE_APPLICATION_CREDENTIALS`, and `DEV_AUTH_ENABLED=false`.
+3. Flow: Google Sign-In popup → Firebase client ID token → `Authorization: Bearer <token>` → FastAPI `require_identity` → Firebase Admin `verify_id_token()` → verified UID → user-scoped rate limiting and project persistence.
 
-To test Firebase, configure the four `VITE_FIREBASE_*` web values, set backend `FIREBASE_PROJECT_ID`, and provide `GOOGLE_APPLICATION_CREDENTIALS` or valid Application Default Credentials. Enable Google sign-in and authorize the frontend hostname in Firebase. The production path is Google sign-in → Firebase ID token → `Authorization: Bearer` → FastAPI Admin verification. Never set either auth bypass in production.
+### Running in Optional Dev Bypass Mode
+1. **Frontend:** Set `VITE_DEV_AUTH_BYPASS=1` in `frontend/.env.local` while Firebase values are unconfigured. The frontend dev bypass is only available in development (`import.meta.env.DEV`) and is impossible in production builds.
+2. **Backend:** In `backend/.env`, set `DEV_AUTH_ENABLED=true`. A built-in guard prohibits `DEV_AUTH_ENABLED` when `ENVIRONMENT=production`.
+
+## Real Gemini and AI Selection
+
+Authentication and AI provider selection are completely independent:
+- `MOCK_PROVIDER_ENABLED=true`: Deterministic offline stand-in (ideal for testing and development without consuming API quota).
+- `MOCK_PROVIDER_ENABLED=false`: Live Gemini 2.5 Flash calls via `GEMINI_API_KEY`.
+Both modes work with real Firebase authentication.
+
 
 ## Verification
 

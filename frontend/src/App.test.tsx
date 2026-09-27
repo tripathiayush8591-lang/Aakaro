@@ -153,3 +153,46 @@ test("completed progress is kept per account, not shared across sessions", async
     (screen.getByLabelText("Your idea") as HTMLTextAreaElement).value,
   ).toBe("");
 });
+
+test("Google sign-in triggers login and popup cancellation shows error allowing retry", async () => {
+  render(<App />);
+  await act(async () => {
+    mocks.listener?.(null);
+  });
+  const button = screen.getByRole("button", { name: "Continue with Google" });
+
+  // Popup cancelled error
+  mocks.login.mockRejectedValueOnce(new Error("Sign-in was cancelled. Try again."));
+  await userEvent.click(button);
+  expect(mocks.login).toHaveBeenCalledTimes(1);
+  expect(await screen.findByRole("alert")).toBeTruthy();
+  expect(screen.getByText("Sign-in was cancelled. Try again.")).toBeTruthy();
+
+  // Retry success
+  mocks.login.mockImplementationOnce(async () => {
+    mocks.listener?.(user);
+  });
+  await userEvent.click(button);
+  expect(await screen.findByLabelText("Your idea")).toBeTruthy();
+});
+
+test("signed-in workspace displays displayName, email, and avatar when available", async () => {
+  render(<App />);
+  const userWithAvatar = {
+    ...user,
+    displayName: "Jane Designer",
+    email: "jane@brand.test",
+    photoURL: "https://example.test/avatar.png",
+  } as User;
+
+  await act(async () => {
+    mocks.listener?.(userWithAvatar);
+  });
+
+  expect(await screen.findByText("Jane Designer")).toBeTruthy();
+  expect(screen.getByText("jane@brand.test")).toBeTruthy();
+  const avatar = screen.getByAltText("Jane Designer") as HTMLImageElement;
+  expect(avatar).toBeTruthy();
+  expect(avatar.src).toBe("https://example.test/avatar.png");
+});
+

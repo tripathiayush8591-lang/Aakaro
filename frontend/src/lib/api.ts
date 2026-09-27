@@ -64,13 +64,41 @@ async function request(
       headers.Authorization = `Bearer ${token}`;
     }
     if (body) headers["Content-Type"] = "application/json";
-    const response = await fetch(`${baseUrl()}${path}`, {
+    let response = await fetch(`${baseUrl()}${path}`, {
       method: body ? "POST" : "GET",
       headers,
       signal: AbortSignal.any([signal, AbortSignal.timeout(55000)]),
       body: body ? JSON.stringify({ ...body, requestId }) : undefined,
     });
-    const payload: unknown = await response.json();
+    let payload: unknown = await response.json();
+    if (
+      user &&
+      response.status === 401 &&
+      object(payload) &&
+      object(payload.error) &&
+      payload.error.code === "TOKEN_EXPIRED" &&
+      !signal.aborted &&
+      auth?.currentUser === user
+    ) {
+      try {
+        const freshToken = await user.getIdToken(true);
+        if (auth?.currentUser === user && !signal.aborted) {
+          const retryHeaders = {
+            ...headers,
+            Authorization: `Bearer ${freshToken}`,
+          };
+          response = await fetch(`${baseUrl()}${path}`, {
+            method: body ? "POST" : "GET",
+            headers: retryHeaders,
+            signal: AbortSignal.any([signal, AbortSignal.timeout(55000)]),
+            body: body ? JSON.stringify({ ...body, requestId }) : undefined,
+          });
+          payload = await response.json();
+        }
+      } catch {
+        // If refresh fails, payload remains the 401 error to be handled below.
+      }
+    }
     if (user && (auth?.currentUser !== user || signal.aborted)) {
       throw new DOMException("Session changed", "AbortError");
     }

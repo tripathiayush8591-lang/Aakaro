@@ -85,3 +85,40 @@ test("normalized provider errors preserve actionable category", async () => {
     detail: { code: "PROVIDER_TIMEOUT", retryable: true },
   });
 });
+
+test("refreshes token once on genuine TOKEN_EXPIRED 401 response and retries", async () => {
+  const user = {
+    getIdToken: vi
+      .fn()
+      .mockResolvedValueOnce("expired-token")
+      .mockResolvedValueOnce("refreshed-token"),
+  } as unknown as User;
+  state.auth.currentUser = user;
+
+  fetchMock
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          requestId: "r1",
+          error: {
+            code: "TOKEN_EXPIRED",
+            message: "Your session expired. Sign in again.",
+            retryable: true,
+          },
+        }),
+        { status: 401 },
+      ),
+    )
+    .mockResolvedValueOnce(
+      new Response(JSON.stringify(result), { status: 200 }),
+    );
+
+  await testConnection("idea", user, new AbortController().signal);
+
+  expect(user.getIdToken).toHaveBeenCalledTimes(2);
+  expect(user.getIdToken).toHaveBeenNthCalledWith(2, true);
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe("Bearer expired-token");
+  expect(fetchMock.mock.calls[1][1].headers.Authorization).toBe("Bearer refreshed-token");
+});
+

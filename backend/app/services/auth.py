@@ -27,13 +27,20 @@ class FirebaseIdentity:
         try:
             with self.lock:
                 if self.app is None:
-                    credential = (
-                        credentials.Certificate(
-                            self.settings.google_application_credentials
-                        )
-                        if self.settings.google_application_credentials
-                        else credentials.ApplicationDefault()
-                    )
+                    if self.settings.google_application_credentials:
+                        from pathlib import Path
+
+                        cred_path = Path(self.settings.google_application_credentials)
+                        if not cred_path.is_absolute() and not cred_path.exists():
+                            candidate = (
+                                Path(__file__).resolve().parent.parent.parent
+                                / cred_path
+                            )
+                            if candidate.exists():
+                                cred_path = candidate
+                        credential = credentials.Certificate(str(cred_path))
+                    else:
+                        credential = credentials.ApplicationDefault()
                     self.app = firebase_admin.initialize_app(
                         credential,
                         {
@@ -76,7 +83,11 @@ class FirebaseIdentity:
 
     def close(self) -> None:
         if self.app:
-            firebase_admin.delete_app(self.app)
+            try:
+                firebase_admin.delete_app(self.app)
+            except (ValueError, TypeError):
+                pass
+            self.app = None
 
 
 def require_identity(

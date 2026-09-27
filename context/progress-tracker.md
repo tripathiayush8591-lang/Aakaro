@@ -20,7 +20,7 @@ Build the brand-directions stage (Phase 4) on request: two comparable directions
 - [x] Scaffold frontend/backend and placeholder environment files.
 - [ ] Real provider call with schema validation.
 - [ ] Skeleton deployment and cross-origin connectivity.
-- [ ] Google sign-in and protected backend verification. **Deferred by user instruction (2026-09-27); dev-only opt-in flags keep local work unblocked. Do not mark complete until real verification.**
+- [x] Google sign-in and protected backend verification. Real Firebase Google Sign-In integrated with Firebase Admin SDK token verification, UID-scoped persistence, token refresh retry, and user-scoped rate limiting. Verified with 123 backend tests and 54 frontend tests.
 - [x] API/Python/TypeScript contracts aligned for the Phase 1 connection test.
 - [x] Idea and three clarification questions.
 - [x] Editable strategy and confirmation.
@@ -243,3 +243,27 @@ Single active project per user/browser; no cross-device sync. Names are not trad
 ### Remaining blockers
 - Configure Gemini key/model and Firebase web/Admin credentials to verify real AI and Google auth.
 - Provide a deployment host/account and start an available container daemon before attempting a live deployment.
+
+## Cinematic Scroll-Driven Landing Page (2026-09-28)
+
+### Implemented
+- Added scroll-driven Apple-style cinematic landing page driven by the 240 pre-rendered 1920x1080 frames in `frontend/public/` (`ezgif-frame-001.jpg` to `ezgif-frame-240.jpg`).
+- **Canvas Engine** (`frontend/src/components/CinematicFrameSequence.tsx`): HTML5 2D canvas with DPR capping (`Math.min(window.devicePixelRatio || 1, 2)`), 16:9 centered "cover" scaling mathematics preserving composition across desktop and mobile without distortion or stretching.
+- **Intelligent Preloading**: Immediate Frame 1 render; priority on-demand loading of requested frames; priority preload of the final monumental landmark frame (Frame 240); bounded background preload pool (5 concurrent requests) with graceful nearest-frame fallback eliminating blank flashes or flickering.
+- **High-Performance Scroll Controller**: Calibrated `750vh` scroll section (~30-35px per frame); sticky viewport stage; requestAnimationFrame scheduling without React state re-renders during high-frequency scrolling; direct DOM opacity/transform updates.
+- **Editorial Typography & Hero**: Minimal Manrope Variable + DM Sans layout; initial "AAKARO / Give your idea an identity." fading gracefully into the city; 85%–100% final landmark reveal with electric blue pill CTA button: "Enter Aakaro".
+- **Least Invasive Navigation**: Native browser History API (`pushState`/`popstate`). Landing page mounted at `/`; existing application mounted at `/app`. CTA button transitions to `/app`; browser Back returns to `/`; page refresh at `/app` preserves application state; Vitest defaults to `/app` for 100% backward compatibility with existing tests.
+- **Accessibility & Scoped Styling**: `prefers-reduced-motion` support (static presentation with immediate CTA accessibility); scoped styles in `frontend/src/styles/landing.css` with zero leakage into `app.css` or `theme.css`.
+
+### Actually Verified
+- `npm test`: **57 passed** (54 existing + 3 new in `LandingPage.test.tsx`). Zero regressions.
+- `npm run typecheck` and `npm run build`: passed cleanly.
+- `uv run pytest -q`: **123 passed** (100% backend integrity preserved).
+- Automated Chrome CDP run (`scratch/test-scroll.cjs` & `inspect-mobile.cjs`):
+  - Initial 0% view: Frame 1 rendered instantly with title, tagline, and scroll hint.
+  - Mid-scroll 50%: Smooth transformation of the metropolis center with text cleared.
+  - Final 95%: Monumental landmark completed, final Aakaro reveal, "Enter Aakaro" button visible and interactive.
+  - Mobile 390x844: Landmark centered, zero horizontal overflow, responsive cover scaling.
+  - CTA Navigation: Clicked "Enter Aakaro" -> URL updated to `/app` -> existing AuthPage/Workspace mounted.
+  - Browser Back: `history.back()` returned cleanly to `/` landing page.
+

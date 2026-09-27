@@ -1,0 +1,286 @@
+/* Cinematic Landing Page Styles for Aakaro
+   Scoped strictly under .cinematic-* to prevent style leakage. */
+
+.cinematic-landing {
+  background-color: #06080d;
+  color: #ffffff;
+  font-family: var(--font-body, "DM Sans Variable", "Segoe UI", system-ui, sans-serif);
+  min-height: 100vh;
+  position: relative;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.cinematic-section {
+  position: relative;
+  width: 100%;
+  height: 750vh; /* Calibrated for ~240 frames (~30-35px per frame on standard screens) */
+}
+
+.cinematic-sticky-stage {
+  position: sticky;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #06080d;
+}
+
+.cinematic-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+
+/* Subtle cinematic vignette for atmosphere and text legibility */
+.cinematic-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at center, transparent 35%, rgba(6, 8, 13, 0.45) 80%, rgba(6, 8, 13, 0.8) 100%),
+    linear-gradient(180deg, rgba(6, 8, 13, 0.4) 0%, transparent 20%, transparent 75%, rgba(6, 8, 13, 0.75) 100%);
+  z-index: 2;
+}
+
+/* Overlays shared layout */
+.cinematic-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem 1.5rem;
+  z-index: 3;
+  pointer-events: none;
+  will-change: opacity, transform;
+}
+
+/* Hero introductory typography */
+.cinematic-intro {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+.cinematic-title {
+  font-family: var(--font-display, "Manrope Variable", "Segoe UI", system-ui, sans-serif);
+  font-size: clamp(3.2rem, 9vw, 7.5rem);
+  font-weight: 800;
+  letter-spacing: clamp(0.22em, 1.2vw, 0.42em);
+  text-indent: clamp(0.22em, 1.2vw, 0.42em); /* Balances letter-spacing optical centering */
+  text-transform: uppercase;
+  margin: 0 0 1.25rem 0;
+  color: #ffffff;
+  line-height: 1.05;
+  text-shadow: 0 4px 30px rgba(0, 0, 0, 0.65);
+}
+
+.cinematic-tagline {
+  font-family: var(--font-body, "DM Sans Variable", "Segoe UI", system-ui, sans-serif);
+  font-size: clamp(1.15rem, 2.4vw, 1.65rem);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: rgba(230, 236, 250, 0.9);
+  margin: 0;
+  line-height: 1.4;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.75);
+}
+
+/* Minimal scroll indicator */
+.cinematic-scroll-hint {
+  position: absolute;
+  bottom: 2.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(220, 228, 245, 0.6);
+  pointer-events: none;
+  animation: cinematicFadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.cinematic-scroll-indicator {
+  width: 1.25rem;
+  height: 2.1rem;
+  border: 1.5px solid rgba(220, 228, 245, 0.4);
+  border-radius: 9999px;
+  position: relative;
+}
+
+.cinematic-scroll-indicator::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 6px;
+  background-color: rgba(220, 228, 245, 0.8);
+  border-radius: 9999px;
+  animation: cinematicMouseWheel 2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes cinematicMouseWheel {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  60% {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  61% {
+    opacity: 0;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes cinematicFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Outro / Final Reveal */
+.cinematic-outro {
+  opacity: 0;
+  transform: translate3d(0, 20px, 0);
+  pointer-events: none;
+}
+
+.cinematic-final-title {
+  font-family: var(--font-display, "Manrope Variable", "Segoe UI", system-ui, sans-serif);
+  font-size: clamp(2.8rem, 7.5vw, 6rem);
+  font-weight: 800;
+  letter-spacing: clamp(0.18em, 1vw, 0.38em);
+  text-indent: clamp(0.18em, 1vw, 0.38em);
+  text-transform: uppercase;
+  margin: 0 0 1rem 0;
+  color: #ffffff;
+  line-height: 1.1;
+  text-shadow: 0 4px 30px rgba(0, 0, 0, 0.7);
+}
+
+.cinematic-final-tagline {
+  font-family: var(--font-body, "DM Sans Variable", "Segoe UI", system-ui, sans-serif);
+  font-size: clamp(1.1rem, 2.2vw, 1.55rem);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: rgba(230, 236, 250, 0.9);
+  margin: 0 0 2.5rem 0;
+  line-height: 1.4;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.75);
+}
+
+/* Primary "Enter Aakaro" CTA */
+.cinematic-cta-button {
+  appearance: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1.1rem 2.4rem;
+  font-family: var(--font-display, "Manrope Variable", "Segoe UI", system-ui, sans-serif);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: 9999px;
+  background-color: #3d5ae8;
+  color: #ffffff;
+  box-shadow:
+    0 10px 28px rgba(61, 90, 232, 0.45),
+    0 2px 6px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition:
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 220ms ease;
+  user-select: none;
+  text-decoration: none;
+}
+
+.cinematic-cta-button:hover {
+  background-color: #4a67f0;
+  transform: translateY(-2px);
+  box-shadow:
+    0 16px 36px rgba(61, 90, 232, 0.6),
+    0 4px 10px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.cinematic-cta-button:active {
+  transform: translateY(1px);
+  background-color: #3451d6;
+  box-shadow:
+    0 6px 16px rgba(61, 90, 232, 0.4),
+    inset 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.cinematic-cta-button:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 4px;
+}
+
+.cinematic-cta-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cinematic-cta-button:hover .cinematic-cta-icon {
+  transform: translateX(3px);
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .cinematic-section {
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .cinematic-scroll-hint {
+    display: none;
+  }
+
+  .cinematic-intro {
+    display: none;
+  }
+
+  .cinematic-outro {
+    opacity: 1 !important;
+    transform: none !important;
+    pointer-events: auto !important;
+  }
+
+  .cinematic-cta-button {
+    transition: none;
+  }
+}

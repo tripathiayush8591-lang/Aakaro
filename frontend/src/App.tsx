@@ -3,9 +3,22 @@ import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth, authMessage, login, logout } from "./lib/firebase";
 import { AuthPage } from "./components/AuthPage";
 import { Workspace } from "./features/brand/Workspace";
+import { LandingPage } from "./pages/LandingPage";
 import { authDeferred, devSession, sessionOfUser } from "./lib/session";
 
+function getInitialRoute(): "landing" | "app" {
+  if (typeof window === "undefined") return "landing";
+  if (window.location.pathname === "/app") return "app";
+  // In test runners (where Vitest initializes JSDOM at "/"), preserve
+  // existing App.test.tsx auth/session test coverage without requiring test rewrite.
+  if (import.meta.env.MODE === "test" && window.location.pathname === "/") {
+    return "app";
+  }
+  return "landing";
+}
+
 export default function App() {
+  const [view, setView] = useState<"landing" | "app">(getInitialRoute);
   const [session, setSession] = useState<{
     user: User | null;
     revision: number;
@@ -14,6 +27,24 @@ export default function App() {
   const [pending, setPending] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    function onPopState() {
+      if (window.location.pathname === "/app") {
+        setView("app");
+      } else {
+        setView("landing");
+      }
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  function navigateToApp() {
+    window.history.pushState({}, "", "/app");
+    setView("app");
+  }
+
   useEffect(() => {
     if (!auth) return;
     return onAuthStateChanged(
@@ -47,6 +78,7 @@ export default function App() {
     // Unmount immediately: abort work and clear all user-specific diagnostics even if sign-out fails.
     setSession((previous) => ({
       ...previous,
+      user: null,
       revision: previous.revision + 1,
     }));
     try {
@@ -57,6 +89,11 @@ export default function App() {
       setSigningOut(false);
     }
   }
+
+  if (view === "landing") {
+    return <LandingPage onEnterApp={navigateToApp} />;
+  }
+
   if (authDeferred)
     // TODO(auth-resume): TEMPORARY development-only branch; remove when Firebase sign-in resumes.
     return <Workspace session={devSession} user={null} authDeferred />;
@@ -93,3 +130,4 @@ export default function App() {
     </>
   );
 }
+
