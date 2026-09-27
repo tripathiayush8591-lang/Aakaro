@@ -86,6 +86,7 @@ export default function App() {
 
   function signInAsGuest() {
     setError("");
+    setInitializing(false);
     const guest = createGuestSession();
     setGuestSession(guest);
     if (view !== "app") {
@@ -93,6 +94,7 @@ export default function App() {
       setView("app");
     }
   }
+
 
   async function signOut() {
     setSigningOut(true);
