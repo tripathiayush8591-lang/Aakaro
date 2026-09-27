@@ -3,7 +3,9 @@ import type { BrandKit } from "../types/project";
 import { validDirections } from "./directions";
 import type { User } from "firebase/auth";
 import { auth } from "./firebase";
+import { getStoredGuestUid } from "./session";
 import type { ApiFailure, ConnectionResult, Success } from "../types/api";
+
 import type {
   BrandDirection,
   ClarificationQuestion,
@@ -57,12 +59,19 @@ async function request(
   const requestId = crypto.randomUUID();
   const headers: Record<string, string> = { "X-Request-ID": requestId };
   try {
-    if (user) {
-      const token = await user.getIdToken();
-      if (auth?.currentUser !== user || signal.aborted)
-        throw new DOMException("Session changed", "AbortError");
-      headers.Authorization = `Bearer ${token}`;
+    if (path !== "/health") {
+      if (user) {
+        const token = await user.getIdToken();
+        if (auth?.currentUser !== user || signal.aborted)
+          throw new DOMException("Session changed", "AbortError");
+        headers.Authorization = `Bearer ${token}`;
+      } else {
+        const guestUid = getStoredGuestUid();
+        headers.Authorization = `Bearer ${guestUid || "guest-session"}`;
+      }
     }
+
+
     if (body) headers["Content-Type"] = "application/json";
     let response = await fetch(`${baseUrl()}${path}`, {
       method: body ? "POST" : "GET",

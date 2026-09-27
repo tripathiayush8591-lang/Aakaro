@@ -39,3 +39,72 @@ export function sessionOfUser(user: {
     photoURL: user.photoURL ?? null,
   };
 }
+
+const GUEST_FLAG_KEY = "aakaro:is_guest";
+const GUEST_UID_KEY = "aakaro:guest_uid";
+
+export function getStoredGuestUid(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(GUEST_UID_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function isGuestSessionActive(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return localStorage.getItem(GUEST_FLAG_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function createGuestSession(): AppSession {
+  let uid = getStoredGuestUid();
+  if (!uid) {
+    const randomSuffix =
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID().slice(0, 8)
+        : Math.random().toString(36).slice(2, 10);
+    uid = `guest-${randomSuffix}`;
+    try {
+      localStorage.setItem(GUEST_UID_KEY, uid);
+    } catch {
+      // ignore storage failure
+    }
+  }
+  try {
+    localStorage.setItem(GUEST_FLAG_KEY, "1");
+  } catch {
+    // ignore storage failure
+  }
+  return {
+    uid,
+    displayName: "Guest",
+    email: "",
+    photoURL: null,
+  };
+}
+
+export function getGuestSession(): AppSession | null {
+  if (!isGuestSessionActive()) return null;
+  const uid = getStoredGuestUid() || "guest-session";
+  return {
+    uid,
+    displayName: "Guest",
+    email: "",
+    photoURL: null,
+  };
+}
+
+export function clearGuestSession(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(GUEST_FLAG_KEY);
+  } catch {
+    // ignore
+  }
+}
+

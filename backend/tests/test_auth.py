@@ -187,3 +187,15 @@ def test_rate_limiting_is_user_scoped(auth_app, monkeypatch):
             json={"requestId": "r-b-1", "idea": "idea b"},
         )
         assert res.status_code == 200
+
+
+def test_guest_token_accepted_without_firebase(auth_app):
+    with TestClient(auth_app, raise_server_exceptions=False) as client:
+        res = client.post(
+            "/api/connection-test",
+            headers={"Authorization": "Bearer guest-user-xyz"},
+            json={"requestId": "r-guest", "idea": "idea guest"},
+        )
+        assert res.status_code == 200
+        assert res.json()["data"]["summary"] == "summary"
+

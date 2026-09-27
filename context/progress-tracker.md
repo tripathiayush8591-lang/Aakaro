@@ -1,12 +1,14 @@
 # Aakaro: Progress Tracker
 
-## Continue as guest — Firebase Anonymous Authentication (2026-09-28)
-- Added a production-safe secondary "Continue as guest" action on the existing login screen using Firebase `signInAnonymously()`. The guest receives a real anonymous Firebase UID and a genuine ID token; the shared `loginInProgress` guard prevents concurrent Google/guest sign-in attempts.
-- No backend changes were required: Firebase Admin `verify_id_token` verifies anonymous tokens like any other provider, so `require_identity` returns the anonymous UID, which already scopes user rate limiting and the `aakaro:v1:<uid>:active-project` persistence key. Google Sign-In, product flows, and the dev-auth bypass are untouched (guest path never uses the bypass).
-- Anonymous users display as "Guest" in the workspace navbar with no email line; sign-out uses the existing `signOut()` path.
-- Guest-specific error messages added for `auth/operation-not-allowed` (Anonymous provider not enabled in the Firebase console) and `auth/too-many-requests`.
-- Requires the **Anonymous** provider to be enabled in the Firebase Console (documented in README Firebase Console Setup).
-- Verified: backend `uv run pytest -q` **123 passed** (unchanged); frontend `npm run typecheck` ✓, `npm test` **58 passed** (1 new: guest error path → anonymous session shown as Guest → normal sign-out), `npm run build` ✓.
+## Direct Guest Sign-In — Instant Workspace Access (2026-09-28)
+- Added direct guest access that does not require Firebase Authentication or external network rounds.
+- Clicking "Continue as guest" on the auth card, or "Guest Sign In · Quick Access" on the landing page hero and outro, immediately creates a local guest session and redirects directly into the `/app` workspace without waiting for Firebase.
+- In `frontend/src/lib/session.ts`, added persistent guest identity generation (`aakaro:guest_uid`) and session persistence (`aakaro:is_guest`). Refresh restores the guest workspace from `localStorage` under `aakaro:v1:<guestUid>:active-project`.
+- In `frontend/src/lib/api.ts`, requests in guest mode send `Authorization: Bearer <guestUid>`.
+- In `backend/app/services/auth.py`, `require_identity` accepts guest tokens (`guest-*`), returning `Identity(uid=token[:64])` for rate-limiting without contacting Firebase Admin SDK.
+- Sign out cleanly resets the guest session and returns to the sign-in screen.
+- Verified: backend `uv run pytest -q` **124 passed** (1 new guest token test); frontend `npm run typecheck` ✓, `npm test` **58 passed**, `npm run build` ✓.
+
 
 ## Render backend deployment — 2026-09-28
 - Created `aakaro-api` via the connected Render plugin in the user-confirmed Ayush's workspace (`tea-d7cm3ufavr4c73aa40qg`). Service: `srv-dasmomu0tbcc73840vu0`; assigned URL: https://aakaro-api.onrender.com.

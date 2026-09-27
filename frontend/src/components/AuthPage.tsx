@@ -81,10 +81,11 @@ export function AuthPage({
             <button
               className="guest-button"
               onClick={onGuestLogin}
-              disabled={pending || guestPending || initializing}
+              disabled={pending}
             >
-              {guestPending ? "Preparing your workspace…" : "Continue as guest"}
+              Continue as guest
             </button>
+
             {error && (
               <p className="error" role="alert">
                 {error}

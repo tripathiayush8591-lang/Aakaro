@@ -1,14 +1,23 @@
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
-import { auth, authMessage, login, loginAsGuest, logout } from "./lib/firebase";
+import { auth, authMessage, login, logout } from "./lib/firebase";
 import { AuthPage } from "./components/AuthPage";
 import { Workspace } from "./features/brand/Workspace";
 import { LandingPage } from "./pages/LandingPage";
-import { authDeferred, devSession, sessionOfUser } from "./lib/session";
+import {
+  authDeferred,
+  clearGuestSession,
+  createGuestSession,
+  devSession,
+  getGuestSession,
+  isGuestSessionActive,
+  sessionOfUser,
+  type AppSession,
+} from "./lib/session";
 
 function getInitialRoute(): "landing" | "app" {
   if (typeof window === "undefined") return "landing";
-  if (window.location.pathname === "/app") return "app";
+  if (window.location.pathname === "/app" || window.location.pathname === "/login") return "app";
   // In test runners (where Vitest initializes JSDOM at "/"), preserve
   // existing App.test.tsx auth/session test coverage without requiring test rewrite.
   if (import.meta.env.MODE === "test" && window.location.pathname === "/") {
@@ -19,19 +28,19 @@ function getInitialRoute(): "landing" | "app" {
 
 export default function App() {
   const [view, setView] = useState<"landing" | "app">(getInitialRoute);
+  const [guestSession, setGuestSession] = useState<AppSession | null>(getGuestSession);
   const [session, setSession] = useState<{
     user: User | null;
     revision: number;
   }>({ user: null, revision: 0 });
-  const [initializing, setInitializing] = useState(!!auth);
+  const [initializing, setInitializing] = useState(!!auth && !isGuestSessionActive());
   const [pending, setPending] = useState(false);
-  const [guestPending, setGuestPending] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     function onPopState() {
-      if (window.location.pathname === "/app") {
+      if (window.location.pathname === "/app" || window.location.pathname === "/login") {
         setView("app");
       } else {
         setView("landing");
@@ -61,6 +70,7 @@ export default function App() {
       },
     );
   }, []);
+
   async function signIn() {
     if (pending) return;
     setPending(true);
@@ -73,22 +83,22 @@ export default function App() {
       setPending(false);
     }
   }
-  async function signInAsGuest() {
-    if (guestPending) return;
-    setGuestPending(true);
+
+  function signInAsGuest() {
     setError("");
-    try {
-      await loginAsGuest();
-    } catch (reason) {
-      setError(authMessage(reason));
-    } finally {
-      setGuestPending(false);
+    const guest = createGuestSession();
+    setGuestSession(guest);
+    if (view !== "app") {
+      window.history.pushState({}, "", "/app");
+      setView("app");
     }
   }
+
   async function signOut() {
     setSigningOut(true);
     setError("");
-    // Unmount immediately: abort work and clear all user-specific diagnostics even if sign-out fails.
+    clearGuestSession();
+    setGuestSession(null);
     setSession((previous) => ({
       ...previous,
       user: null,
@@ -104,23 +114,27 @@ export default function App() {
   }
 
   if (view === "landing") {
-    return <LandingPage onEnterApp={navigateToApp} />;
+    return <LandingPage onEnterApp={navigateToApp} onGuestLogin={signInAsGuest} />;
   }
 
   if (authDeferred)
     // TODO(auth-resume): TEMPORARY development-only branch; remove when Firebase sign-in resumes.
     return <Workspace session={devSession} user={null} authDeferred />;
-  if (!session.user || initializing)
+
+  const activeSession = session.user ? sessionOfUser(session.user) : guestSession;
+
+  if (!activeSession || (initializing && !guestSession))
     return (
       <AuthPage
         initializing={initializing}
         pending={pending}
-        guestPending={guestPending}
+        guestPending={false}
         error={error}
         onLogin={signIn}
         onGuestLogin={signInAsGuest}
       />
     );
+
   return (
     <>
       {error && (
@@ -130,8 +144,8 @@ export default function App() {
       )}
       {!signingOut ? (
         <Workspace
-          key={`${session.user.uid}-${session.revision}`}
-          session={sessionOfUser(session.user)}
+          key={`${activeSession.uid}-${session.revision}`}
+          session={activeSession}
           user={session.user}
           authDeferred={false}
           onLogout={signOut}
@@ -145,4 +159,5 @@ export default function App() {
     </>
   );
 }
+
 

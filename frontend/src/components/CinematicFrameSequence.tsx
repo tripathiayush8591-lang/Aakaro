@@ -3,12 +3,15 @@ import { useEffect, useRef } from "react";
 interface Props {
   totalFrames?: number;
   onEnterApp: () => void;
+  onGuestLogin?: () => void;
 }
 
 export function CinematicFrameSequence({
   totalFrames = 240,
   onEnterApp,
+  onGuestLogin,
 }: Props) {
+
   const sectionRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const introRef = useRef<HTMLDivElement>(null);
@@ -324,6 +327,30 @@ export function CinematicFrameSequence({
         <div ref={introRef} className="cinematic-overlay cinematic-intro">
           <h1 className="cinematic-title">AAKARO</h1>
           <p className="cinematic-tagline">Give your idea an identity.</p>
+          {onGuestLogin && (
+            <div className="cinematic-hero-actions">
+              <button
+                type="button"
+                className="cinematic-guest-btn"
+                onClick={onGuestLogin}
+                aria-label="Guest sign in"
+              >
+                <span>Guest Sign In · Quick Access</span>
+                <svg
+                  className="cinematic-cta-icon"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+            </div>
+          )}
           <div
             ref={scrollHintRef}
             className="cinematic-scroll-hint"
@@ -340,28 +367,41 @@ export function CinematicFrameSequence({
           <p className="cinematic-final-tagline">
             Give your idea an identity.
           </p>
-          <button
-            type="button"
-            className="cinematic-cta-button"
-            onClick={onEnterApp}
-            aria-label="Enter Aakaro"
-          >
-            <span>Enter Aakaro</span>
-            <svg
-              className="cinematic-cta-icon"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              aria-hidden="true"
+          <div className="cinematic-cta-group">
+            <button
+              type="button"
+              className="cinematic-cta-button"
+              onClick={onEnterApp}
+              aria-label="Enter Aakaro"
             >
-              <path
-                fillRule="evenodd"
-                d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </button>
+              <span>Enter Aakaro</span>
+              <svg
+                className="cinematic-cta-icon"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+            {onGuestLogin && (
+              <button
+                type="button"
+                className="cinematic-cta-button cinematic-cta-secondary"
+                onClick={onGuestLogin}
+                aria-label="Continue as guest"
+              >
+                <span>Continue as Guest</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </section>
+
   );
 }
