@@ -273,7 +273,7 @@ class MockAakaroAI:
                     verdict=(
                         f"(Mock evaluation) Works best for {audience} when "
                         f"{strategy.differentiation[:80]}. Main trade-off: {risks[index % 3]}"
-                    ),
+                    )[:300],
                 )
                 for index, candidate in enumerate(candidates)
             ]

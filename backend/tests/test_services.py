@@ -10,7 +10,7 @@ from app.core.config import Settings
 from app.core.errors import AppError
 from app.core.limits import UserLimiter
 from app.services.auth import FirebaseIdentity
-from app.services.gemini import GeminiService
+from app.services.gemini import GeminiService, _provider_schema
 
 
 def service(side_effect):
@@ -41,6 +41,22 @@ async def test_schema_repair_once():
             "Previous output"
         )[-1]
     )
+    assert generate.call_args.kwargs["config"].thinking_config.thinking_budget == 0
+
+
+def test_provider_schema_omits_unsupported_additional_properties():
+    from app.schemas.stages import ClarifyResult
+
+    schema = _provider_schema(ClarifyResult)
+
+    def contains_key(value, key):
+        if isinstance(value, dict):
+            return key in value or any(contains_key(item, key) for item in value.values())
+        if isinstance(value, list):
+            return any(contains_key(item, key) for item in value)
+        return False
+
+    assert not contains_key(schema, "additionalProperties")
 
 
 async def test_invalid_output_stops_after_two():

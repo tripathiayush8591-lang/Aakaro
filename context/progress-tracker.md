@@ -222,3 +222,24 @@ Single active project per user/browser; no cross-device sync. Names are not trad
 - Verified: **106 backend tests** (unchanged), **51 frontend tests** (18 new: validator/apply-fix/reducer/storage-roundtrip/export + 6 screen tests covering blocked state, kit-linked review call, apply-fix dispatch, zero-issue completion, stale re-check with latest content, export actions), typecheck, build, `git diff --check`. Updated one pre-existing Brand Kit test to the new confirm→Spellcheck hand-off.
 - Browser (localhost, dev mock backend): confirm kit → Spellcheck screen; pasted off-brand copy → two `rule3` issues with real rule text, quotes and offsets; Apply fix changed only the working copy ("revolutionary"→"new", "game-changing"→"useful") while the original paste stayed intact; re-check re-grounded offsets on the edited content; second fix → re-check → "No rule conflicts found. 8 of 8 confirmed rules passed"; Finish → "Content confirmed." with locked editor; reload restored the completed state; Markdown download fired; dark theme verified by screenshot; zero horizontal overflow at desktop width. Direct 390px emulation is not available in the in-app browser pane; 390 correctness rests on the same ≤720px single-column breakpoints verified for earlier phases.
 - Remaining: real Gemini review run, real Firebase sign-in, deployment — deferred by scope as in earlier phases. No compliance percentage or factual-claim verification is claimed anywhere.
+
+## Final integration and demo readiness pass (2026-09-27)
+
+### Implemented
+- Preserved the Phase 6 architecture and added no product phases or new feature surface.
+- Removed the React development Strict Mode wrapper from `frontend/src/main.tsx` so Vite dev runs do not double-dispatch stage generation effects against the backend's one-request guard.
+- Fixed the deterministic mock naming evaluator to cap verdicts at the declared 300-character schema limit; added a regression test using the long hackathon demo brief.
+- Replaced the stale Phase 1 README with current full-MVP setup, environment, integration, deployment-preparation, and limitation notes; added the short repeatable `DEMO.md` script.
+
+### Final verification
+- Baseline before edits: backend **106 passed**, frontend **51 passed**, typecheck/build/diff check clean.
+- Final automated gates: backend **107 passed** (one existing Starlette/httpx deprecation warning), frontend **51 passed**, typecheck clean, production build successful, `git diff --check` clean.
+- Fresh-browser mock run verified the complete journey: idea → three questions → strategy lock → five evaluated names → exactly two shortlisted → three Graveyard candidates retained after refresh → two directions with selection switching → locked direction after refresh → editable Brand Kit → invalid HEX blocked → preview edit visible → confirmed rules → three rule-linked Spellcheck issues → apply-fix updates working content only → original content preserved → re-check to 8/8 passed → Markdown download trigger → browser print trigger → content confirmed.
+- Local health and CORS preflight were verified. No real Gemini/Firebase credentials were available, so no live-provider or Google sign-in claim is made.
+- Docker is installed but the Docker Desktop Linux daemon was unavailable, so the container build could not be verified. No Git remote or deployment host is configured.
+- Follow-up real Gemini check: `GEMINI_API_KEY` and `GEMINI_MODEL` are now configured, but the provider returned HTTP 503 `UNAVAILABLE` because `gemini-3.5-flash` was experiencing high demand. The mock provider remains enabled for the demo; no live Gemini claim is made.
+- Gemini recheck: `gemini-3.0-flash` was not found (HTTP 404). The account model list includes `gemini-2.5-flash`; after removing unsupported `additionalProperties` from the provider wire schema and disabling model thinking with a zero budget, real **Clarify** and **Strategy** calls passed with valid structured outputs. Local ignored `backend/.env` now uses `GEMINI_MODEL=gemini-2.5-flash`; `MOCK_PROVIDER_ENABLED=true` remains for demo reliability.
+
+### Remaining blockers
+- Configure Gemini key/model and Firebase web/Admin credentials to verify real AI and Google auth.
+- Provide a deployment host/account and start an available container daemon before attempting a live deployment.

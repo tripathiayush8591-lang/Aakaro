@@ -197,3 +197,21 @@ def test_mock_naming_fixtures_are_deterministic_and_cover_the_five_ids():
         for e in evaluation.evaluations
         for v in e.scores.model_dump().values()
     )
+
+
+def test_mock_naming_evaluation_respects_verdict_limit_for_long_strategy():
+    provider = MockAakaroAI()
+    brief = StrategyBrief.model_validate(
+        {
+            **BRIEF,
+            "audience": {
+                "primary": "First-time participants who want a welcoming, skill-balanced team.",
+                "description": "From your answers: First-time participants who want a welcoming, skill-balanced team.",
+            },
+            "promise": "Deliver clearly on what you described: A platform that helps college students find compatible teammates for hackathons based on skills, interests and project goals.",
+            "differentiation": "From your answers: Collaborative and welcoming, with enough energy for a live hackathon.",
+        }
+    )
+    candidates = asyncio.run(provider.naming_candidates(brief)).candidates
+    evaluation = asyncio.run(provider.naming_evaluation(brief, candidates))
+    assert all(len(item.verdict) <= 300 for item in evaluation.evaluations)
