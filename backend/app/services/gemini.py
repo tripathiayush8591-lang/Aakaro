@@ -9,6 +9,9 @@ from pydantic import BaseModel, ValidationError
 
 from app.core.config import Settings, configured
 from app.core.errors import AppError, configuration_error
+from app.prompts.brand_kit import BRAND_KIT_SYSTEM
+from app.schemas.brand_kit import BrandKit
+from app.schemas.stages import BrandDirection
 from app.prompts.clarify import CLARIFY_SYSTEM
 from app.prompts.directions import DIRECTIONS_SYSTEM
 from app.prompts.naming import NAMING_CANDIDATES_SYSTEM, NAMING_EVALUATION_SYSTEM
@@ -226,6 +229,28 @@ class GeminiService:
             max_output_tokens=4096,
             check=matches_shortlist,
         )
+
+    async def brand_kit(
+        self, strategy: StrategyBrief, candidate: NamingCandidate, direction: BrandDirection,
+    ) -> BrandKit:
+        def preserves_foundation(kit: BrandKit) -> str | None:
+            if kit.identity.name != candidate.name:
+                return "identity.name must match selectedCandidate.name"
+            if kit.colors.model_dump() != direction.colors.model_dump(exclude={"rationale"}):
+                return "colors must match selectedDirection colors"
+            return None
+
+        kit = await self._structured_call(
+            system=BRAND_KIT_SYSTEM,
+            contents=json.dumps({"strategy": strategy.model_dump(),
+                                 "selectedCandidate": candidate.model_dump(),
+                                 "selectedDirection": direction.model_dump()}),
+            schema=BrandKit, max_output_tokens=4096, check=preserves_foundation,
+        )
+        return kit.model_copy(update={"rules": [
+            rule.model_copy(update={"id": f"rule{i}"})
+            for i, rule in enumerate(kit.rules, 1)
+        ]})
 
     async def close(self) -> None:
         if self.client:

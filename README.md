@@ -92,6 +92,8 @@ The idea is trimmed and must contain 1–1,000 characters. Extra request fields 
 
 `POST /api/directions/generate` takes `{requestId, strategy, shortlistedCandidates, evaluations}`: the confirmed brief, exactly two distinct shortlisted candidates and exactly their two evaluations. Returns `data.directions[]` with canonical `direction1`/`direction2` mapped to shortlist order, `candidateId`, `conceptName`, `conceptStatement`, `personality`, `colors`, `typography`, `logoApproach`, `imagery`, and `voice`. Four colors must be six-digit HEX values. Invalid structure/mapping is repaired at most once. Uses the existing identity dependency, limiter, timeout and deterministic mock switch. Graveyard candidates are not sent.
 
+`POST /api/brand-kit/generate` takes `{requestId, strategy, selectedCandidate, selectedDirection}` from the confirmed upstream decisions. It returns an editable `BrandKit` with identity, the direction's four HEX colors, typography, text-only wordmark guidance, imagery, voice preferences, and 6–10 structured `BrandRule` objects. The server enforces the selected name, palette continuity, and canonical `rule1`…`ruleN` IDs. The browser stores draft and confirmed kits in the canonical project, updates a neutral live preview immediately, and advances to `spellcheck` only after ClayModal confirmation. Spellcheck itself is intentionally not implemented in Phase 5.
+
 ```json
 { "requestId": "...", "error": { "code": "PROVIDER_TIMEOUT", "message": "AI took too long. Please try again.", "retryable": true } }
 ```

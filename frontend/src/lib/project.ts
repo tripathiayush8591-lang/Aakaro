@@ -1,13 +1,15 @@
+import { kitFoundation, validBrandKit } from "./brandKit";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type {
   AakaroProject,
   BrandDirection,
+  BrandKit,
   ClarificationQuestion,
   NamingCandidate,
   NamingEvaluation,
   StrategyBrief,
 } from "../types/project";
-import { emptyNamingState, emptyDirectionsState } from "../types/project";
+import { emptyNamingState, emptyDirectionsState, emptyBrandKitState } from "../types/project";
 import { validDirections } from "./directions";
 import { loadProject, saveProject } from "./storage";
 
@@ -25,6 +27,7 @@ export function createProject(): AakaroProject {
     strategy: { draft: null, confirmed: null },
     naming: emptyNamingState(),
     directions: emptyDirectionsState(),
+    brandKit: emptyBrandKitState(),
   };
 }
 
@@ -61,6 +64,13 @@ export type ProjectAction =
   | { type: "selectDirection"; id: string }
   | { type: "confirmDirection"; confirmedAt: string }
   | { type: "unlockDirection" }
+  | { type: "brandKitStart"; expectedRevision: number }
+  | { type: "brandKitSuccess"; draft: BrandKit; expectedRevision: number; generatedAt: string }
+  | { type: "brandKitFailure"; expectedRevision: number }
+  | { type: "editBrandKit"; draft: BrandKit }
+  | { type: "confirmBrandKit"; confirmedAt: string }
+  | { type: "unlockBrandKit" }
+  | { type: "backToDirections" }
   | { type: "reset" };
 
 function commit(
@@ -95,6 +105,7 @@ export function projectReducer(
         strategy: { draft: null, confirmed: null },
         naming: emptyNamingState(),
         directions: emptyDirectionsState(),
+        brandKit: emptyBrandKitState(),
       });
     }
     case "enterClarification": {
@@ -147,6 +158,7 @@ export function projectReducer(
         strategy: { ...state.strategy, draft: action.draft, confirmed: null },
         naming: emptyNamingState(),
         directions: emptyDirectionsState(),
+        brandKit: emptyBrandKitState(),
       });
     }
     case "reviseAnswers":
@@ -155,6 +167,7 @@ export function projectReducer(
         strategy: { draft: null, confirmed: null },
         naming: emptyNamingState(),
         directions: emptyDirectionsState(),
+        brandKit: emptyBrandKitState(),
       });
     case "confirmStrategy": {
       if (!state.strategy.draft) return state;
@@ -174,6 +187,7 @@ export function projectReducer(
         // Naming depends entirely on the confirmed strategy, so it resets.
         naming: emptyNamingState(),
         directions: emptyDirectionsState(),
+        brandKit: emptyBrandKitState(),
       });
     case "namingCandidatesSuccess": {
       if (
@@ -185,6 +199,7 @@ export function projectReducer(
       // A fresh generation clears any stale selection from a previous run.
       return commit(state, {
         directions: emptyDirectionsState(),
+        brandKit: emptyBrandKitState(),
         naming: {
           candidates: action.candidates,
           evaluations: [],
@@ -230,7 +245,7 @@ export function projectReducer(
           ? [...naming.selectedIds, action.candidateId]
           : naming.selectedIds;
       if (selectedIds === naming.selectedIds) return state;
-      return commit(state, { naming: { ...naming, selectedIds }, directions: emptyDirectionsState() });
+      return commit(state, { naming: { ...naming, selectedIds }, directions: emptyDirectionsState(), brandKit: emptyBrandKitState() });
     }
     case "confirmNaming": {
       const { naming } = state;
@@ -260,6 +275,7 @@ export function projectReducer(
         currentStage: "naming",
         naming: { ...state.naming, generationStatus: "ready", graveyardIds: [], confirmedAt: undefined },
         directions: emptyDirectionsState(),
+        brandKit: emptyBrandKitState(),
       });
     case "directionsStart":
       if (state.revision !== action.expectedRevision || state.currentStage !== "directions" ||
@@ -274,11 +290,11 @@ export function projectReducer(
       } });
     case "directionsFailure":
       if (state.revision !== action.expectedRevision || state.directions.status !== "generating") return state;
-      return commit(state, { directions: emptyDirectionsState() });
+      return commit(state, { directions: emptyDirectionsState(), brandKit: emptyBrandKitState() });
     case "selectDirection":
       if (state.currentStage !== "directions" || state.directions.status !== "ready" ||
         !state.directions.items.some(d => d.id === action.id)) return state;
-      return commit(state, { directions: { ...state.directions, selectedDirectionId: action.id } });
+      return commit(state, { directions: { ...state.directions, selectedDirectionId: action.id }, brandKit: emptyBrandKitState() });
     case "confirmDirection":
       if (state.currentStage !== "directions" || state.directions.status !== "ready" ||
         !state.strategy.confirmed || state.naming.generationStatus !== "confirmed" ||
@@ -288,11 +304,46 @@ export function projectReducer(
         ...state.directions, status: "confirmed", confirmedAt: action.confirmedAt,
       } });
     case "unlockDirection":
-      // Future kit/rules/review state must be cleared here when that domain is introduced.
+      // Direction unlock invalidates the kit and its confirmed rules.
       if (state.directions.status !== "confirmed") return state;
-      return commit(state, { currentStage: "directions", directions: {
+      return commit(state, { currentStage: "directions", brandKit: emptyBrandKitState(), directions: {
         ...state.directions, status: "ready", confirmedAt: undefined,
       } });
+    case "backToDirections":
+      return commit(state, { currentStage: "directions" });
+    case "brandKitStart":
+      if (state.revision !== action.expectedRevision || state.currentStage !== "brand-kit" ||
+        !kitFoundation(state) || state.brandKit.status !== "idle") return state;
+      return commit(state, { brandKit: { ...emptyBrandKitState(), status: "generating" } });
+    case "brandKitSuccess": {
+      const foundation = kitFoundation(state);
+      if (state.revision !== action.expectedRevision || state.currentStage !== "brand-kit" ||
+        state.brandKit.status !== "generating" || !foundation || !validBrandKit(action.draft, foundation.candidate.name)) return state;
+      if (!(["primary", "secondary", "accent", "background"] as const).every(role =>
+        action.draft.colors[role] === foundation.direction.colors[role])) return state;
+      return commit(state, { brandKit: { draft: action.draft, confirmed: null, status: "ready", generatedAt: action.generatedAt } });
+    }
+    case "brandKitFailure":
+      if (state.revision !== action.expectedRevision || state.brandKit.status !== "generating") return state;
+      return commit(state, { brandKit: emptyBrandKitState() });
+    case "editBrandKit": {
+      const foundation = kitFoundation(state);
+      if (state.currentStage !== "brand-kit" || !["editing", "ready"].includes(state.brandKit.status) ||
+        !foundation || !validBrandKit(action.draft, foundation.candidate.name, false)) return state;
+      return commit(state, { brandKit: { ...state.brandKit, draft: action.draft, status: "editing", confirmed: null, confirmedAt: undefined } });
+    }
+    case "confirmBrandKit": {
+      const foundation = kitFoundation(state);
+      if (state.currentStage !== "brand-kit" || !["editing", "ready"].includes(state.brandKit.status) ||
+        !foundation || !validBrandKit(state.brandKit.draft, foundation.candidate.name)) return state;
+      return commit(state, { currentStage: "spellcheck", brandKit: { ...state.brandKit,
+        confirmed: structuredClone(state.brandKit.draft), status: "confirmed", confirmedAt: action.confirmedAt } });
+    }
+    case "unlockBrandKit":
+      if (state.brandKit.status !== "confirmed" || !state.brandKit.confirmed) return state;
+      // Phase 6 must clear both review modes here; no review results exist yet.
+      return commit(state, { currentStage: "brand-kit", brandKit: { ...state.brandKit,
+        draft: structuredClone(state.brandKit.confirmed), confirmed: null, confirmedAt: undefined, status: "editing" } });
     case "reset":
       return createProject();
     default:

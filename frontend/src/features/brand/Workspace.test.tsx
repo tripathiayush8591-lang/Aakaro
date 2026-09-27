@@ -101,6 +101,7 @@ function savedProject(overrides: Partial<AakaroProject>): AakaroProject {
     clarification: { questions, answers: [], completed: false },
     strategy: { draft: null, confirmed: null },
     naming: namingState(),
+    brandKit: { draft: null, confirmed: null, status: "idle" },
     directions: { items: [], selectedDirectionId: null, status: "idle" },
   };
   return { ...base, ...overrides } as AakaroProject;

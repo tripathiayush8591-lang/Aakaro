@@ -1,3 +1,4 @@
+import { kitFoundation, parseBrandKit } from "./brandKit";
 import type {
   AakaroProject,
   NamingCandidate,
@@ -312,6 +313,10 @@ export function parseProject(value: unknown): AakaroProject | null {
   const directions = parseDirections(p.directions, naming);
   if (!directions || (directions.status !== "idle" && !confirmed)) return null;
   if (p.currentStage === "brand-kit" && directions.status !== "confirmed") return null;
+  const foundation = kitFoundation({ strategy: { draft, confirmed }, naming, directions });
+  const brandKit = parseBrandKit(p.brandKit, foundation?.candidate.name);
+  if (!brandKit || (brandKit.status !== "idle" && !foundation)) return null;
+  if (p.currentStage === "spellcheck" && brandKit.status !== "confirmed") return null;
   return {
     schemaVersion: 1,
     id: p.id,
@@ -340,6 +345,7 @@ export function parseProject(value: unknown): AakaroProject | null {
     },
     naming,
     directions,
+    brandKit,
   };
 }
 

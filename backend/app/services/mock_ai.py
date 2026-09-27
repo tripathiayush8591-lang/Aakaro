@@ -7,8 +7,10 @@ can proceed without provider credentials. The UI labels this mode visibly.
 
 import asyncio
 
+from app.schemas.brand_kit import BrandKit
 from app.schemas.connection import ConnectionResult
 from app.schemas.stages import (
+    BrandDirection,
     ClarificationPair,
     ClarifyResult,
     DirectionsResult,
@@ -311,6 +313,41 @@ class MockAakaroAI:
                 },
             })
         return DirectionsResult.model_validate({"directions": directions})
+
+    async def brand_kit(
+        self, strategy: StrategyBrief, candidate: NamingCandidate, direction: BrandDirection,
+    ) -> BrandKit:
+        await self._delay()
+        heading = direction.typography.headingStyle.lower()
+        rules = [
+            ("voice", "Address the reader as 'you' in invitations.", "Keeps the relationship conversational."),
+            ("voice", "Keep each call to action to one active verb and its object.", "Makes the next step concrete."),
+            ("language", "Avoid 'revolutionary', 'game-changing', and 'best-in-class'.", "Confidence should not depend on inflated claims."),
+            ("language", "Explain specialist terms in everyday words on first use.", f"Welcomes {strategy.audience.primary[:100]}."),
+            ("messaging", f"Lead headlines with this outcome: {strategy.promise[:180]}", "Keeps the promise ahead of features."),
+            ("messaging", "Do not promise numeric results without a cited source.", "The strategy supplies no measured performance evidence."),
+            ("visual", f"Use {direction.colors.primary} for wordmarks and {direction.colors.background} for the main canvas.", "Carries the locked direction into everyday layouts."),
+            ("visual", "Reserve the accent color for the primary call to action.", "Gives each composition one clear next step."),
+        ]
+        return BrandKit.model_validate({
+            "identity": {"name": candidate.name, "tagline": direction.voice.sampleLine,
+                         "descriptor": strategy.oneLiner[:200]},
+            "colors": direction.colors.model_dump(exclude={"rationale"}),
+            "typography": {"headingStyle": direction.typography.headingStyle,
+                           "bodyStyle": direction.typography.bodyStyle,
+                           "usageGuidance": "Use display type for short headlines; use body type for explanations with 1.6 line spacing."},
+            "wordmark": {"treatment": direction.logoApproach.approach,
+                         "casing": "uppercase" if "uppercase" in heading else "lowercase",
+                         "tracking": "wide" if "spaced" in heading else "tight",
+                         "weight": "bold" if "bold" in heading else "medium"},
+            "imagery": {"style": direction.imagery.style, "guidance": direction.imagery.rationale},
+            "voice": {"traits": direction.voice.traits,
+                      "description": f"Speak to {strategy.audience.primary[:100]} with {', '.join(direction.voice.traits).lower()} phrasing. Lead with a useful next step.",
+                      "preferredLanguage": ["Active verbs", "Direct second-person invitations", "Concrete descriptions of outcomes", "Short sentences with one point"],
+                      "avoidedLanguage": ["Corporate jargon", "Revolutionary or game-changing", "Unsupported numeric promises", "Exclusionary labels for beginners"]},
+            "rules": [{"id": f"rule{i}", "category": category, "rule": rule, "rationale": why}
+                      for i, (category, rule, why) in enumerate(rules, 1)],
+        })
 
     async def close(self) -> None:
         return None

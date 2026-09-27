@@ -114,6 +114,7 @@ export interface AakaroProject {
   };
   naming: NamingState;
   directions: DirectionsState;
+  brandKit: BrandKitState;
 }
 
 export interface BrandDirection {
@@ -166,4 +167,35 @@ export function stageStep(stage: ProjectStage): StageStepId {
     default:
       return "identity";
   }
+}
+
+export interface BrandRule {
+  id: string;
+  category: "voice" | "language" | "messaging" | "visual";
+  rule: string;
+  rationale: string;
+}
+export interface BrandKit {
+  identity: { name: string; tagline: string; descriptor: string };
+  colors: { primary: string; secondary: string; accent: string; background: string };
+  typography: { headingStyle: string; bodyStyle: string; usageGuidance: string };
+  wordmark: {
+    treatment: string;
+    casing: "lowercase" | "uppercase" | "titlecase" | "mixed";
+    tracking: "tight" | "normal" | "wide";
+    weight: "regular" | "medium" | "semibold" | "bold";
+  };
+  imagery: { style: string; guidance: string };
+  voice: { traits: string[]; description: string; preferredLanguage: string[]; avoidedLanguage: string[] };
+  rules: BrandRule[];
+}
+export interface BrandKitState {
+  draft: BrandKit | null;
+  confirmed: BrandKit | null;
+  status: "idle" | "generating" | "editing" | "ready" | "confirmed";
+  generatedAt?: string;
+  confirmedAt?: string;
+}
+export function emptyBrandKitState(): BrandKitState {
+  return { draft: null, confirmed: null, status: "idle" };
 }

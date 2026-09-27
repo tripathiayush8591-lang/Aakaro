@@ -1,3 +1,4 @@
+import { BrandKitScreen } from "./BrandKitScreen";
 import { useMemo, type Dispatch, type ReactNode } from "react";
 import type { User } from "firebase/auth";
 import { useAakaroProject, type ProjectAction } from "../../lib/project";
@@ -33,6 +34,9 @@ function screenFor(
       );
     case "directions":
       return <DirectionsScreen project={project} dispatch={dispatch} user={user} />;
+    case "brand-kit":
+    case "spellcheck":
+      return <BrandKitScreen project={project} dispatch={dispatch} user={user} />;
     default:
       return <DirectionsScreen project={project} dispatch={dispatch} user={user} />;
   }

@@ -1,3 +1,5 @@
+import { COLOR_ROLES, validBrandKit } from "./brandKit";
+import type { BrandKit } from "../types/project";
 import { validDirections } from "./directions";
 import type { User } from "firebase/auth";
 import { auth } from "./firebase";
@@ -372,4 +374,17 @@ export async function generateDirections(
     throw new ApiError(invalidAIResponse, result.requestId);
   }
   return [...result.data.directions].sort((a, b) => a.id.localeCompare(b.id));
+}
+
+export async function generateBrandKit(
+  strategy: StrategyBrief, selectedCandidate: NamingCandidate, selectedDirection: BrandDirection,
+  user: User | null, signal: AbortSignal,
+): Promise<BrandKit> {
+  const result = await request("/api/brand-kit/generate", user, signal, { strategy, selectedCandidate, selectedDirection });
+  const kit = result.data;
+  if (!validBrandKit(kit, selectedCandidate.name) ||
+    !COLOR_ROLES.every(role => kit.colors[role] === selectedDirection.colors[role])) {
+    throw new ApiError(invalidAIResponse, result.requestId);
+  }
+  return kit;
 }
