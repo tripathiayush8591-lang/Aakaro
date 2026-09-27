@@ -101,6 +101,7 @@ function savedProject(overrides: Partial<AakaroProject>): AakaroProject {
     clarification: { questions, answers: [], completed: false },
     strategy: { draft: null, confirmed: null },
     naming: namingState(),
+    directions: { items: [], selectedDirectionId: null, status: "idle" },
   };
   return { ...base, ...overrides } as AakaroProject;
 }
@@ -383,7 +384,7 @@ test("shortlist is capped at two; the other three enter The Graveyard; confirm a
   }) as HTMLButtonElement;
   expect(third.disabled).toBe(true);
   await userEvent.click(screen.getByRole("button", { name: /Confirm naming decision/ }));
-  expect(await screen.findByText("Your name is on the door.")).toBeTruthy();
+  expect(await screen.findByText("Two ways your identity could come alive.")).toBeTruthy();
   await userEvent.click(screen.getByRole("button", { name: /The Graveyard/ }));
   const graveyard = screen.getByLabelText(
     "The Graveyard — alternatives we evaluated",

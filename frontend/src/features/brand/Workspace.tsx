@@ -7,7 +7,8 @@ import { ThemeToggle } from "../../components/ThemeToggle";
 import { StageRail } from "./StageRail";
 import { IdeaScreen } from "./IdeaScreen";
 import { ClarifyScreen } from "./ClarifyScreen";
-import { DirectionsReady, NamingScreen } from "./NamingScreen";
+import { NamingGraveyard, NamingScreen } from "./NamingScreen";
+import { DirectionsScreen } from "./DirectionsScreen";
 import { StrategyScreen } from "./StrategyScreen";
 
 function screenFor(
@@ -31,9 +32,9 @@ function screenFor(
         <StrategyScreen project={project} dispatch={dispatch} user={user} />
       );
     case "directions":
-      return <DirectionsReady project={project} dispatch={dispatch} />;
+      return <DirectionsScreen project={project} dispatch={dispatch} user={user} />;
     default:
-      return <DirectionsReady project={project} dispatch={dispatch} />;
+      return <DirectionsScreen project={project} dispatch={dispatch} user={user} />;
   }
 }
 
@@ -118,6 +119,8 @@ export function Workspace({
           </p>
         )}
         {screenFor(project, dispatch, user)}
+        {(project.currentStage === "directions" || project.currentStage === "brand-kit") &&
+          project.naming.generationStatus === "confirmed" && <NamingGraveyard project={project} />}
       </main>
     </div>
   );

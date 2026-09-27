@@ -11,6 +11,7 @@ from app.schemas.connection import ConnectionResult
 from app.schemas.stages import (
     ClarificationPair,
     ClarifyResult,
+    DirectionsResult,
     NamingCandidate,
     NamingCandidatesResult,
     NamingEvaluation,
@@ -257,6 +258,59 @@ class MockAakaroAI:
                 for index, candidate in enumerate(candidates)
             ]
         )
+
+    async def directions(
+        self, strategy: StrategyBrief, shortlisted: list[NamingCandidate],
+        evaluations: list[NamingEvaluation],
+    ) -> DirectionsResult:
+        await self._delay()
+        by_id = {e.candidateId: e for e in evaluations}
+        directions = []
+        for index, candidate in enumerate(shortlisted):
+            evaluation = by_id[candidate.id]
+            warm = index == 0
+            directions.append({
+                "id": f"direction{index + 1}",
+                "candidateId": candidate.id,
+                "conceptName": "An open invitation" if warm else "Room to move",
+                "conceptStatement": (
+                    f"{candidate.name} as {'a welcoming meeting place' if warm else 'a confident system of building blocks'} "
+                    f"for {strategy.audience.primary[:75]}. "
+                    f"Develops the name's angle: {candidate.rationale[:110]}"
+                ),
+                "personality": strategy.personality,
+                "colors": {
+                    "primary": "#813F2D" if warm else "#203F3A",
+                    "secondary": "#DBAC87" if warm else "#A8C2B4",
+                    "accent": "#F1CB68" if warm else "#D8EF69",
+                    "background": "#FFF4E7" if warm else "#EFF5EE",
+                    "rationale": (
+                        "Clay, apricot and warm paper make an inviting editorial setting; "
+                        "dark clay anchors headings and gold marks small moments of emphasis."
+                        if warm else
+                        "Deep forest anchors the type, sage separates sections and sharp lime "
+                        "marks actions; pale space keeps the modular composition clear."
+                    ),
+                },
+                "typography": {
+                    "headingStyle": "Manrope bold, tight lowercase" if warm else "DM Sans medium, spaced uppercase",
+                    "bodyStyle": "DM Sans regular, open line spacing" if warm else "Manrope regular, compact paragraphs",
+                    "rationale": f"Keeps the name legible while supporting {strategy.personality[0][:60]} character.",
+                },
+                "logoApproach": {
+                    "approach": "Lowercase wordmark with an open circular symbol" if warm else "Uppercase wordmark with an offset square symbol",
+                    "rationale": f"A distinct silhouette responds to this evaluation risk: {evaluation.risks[0]}",
+                },
+                "imagery": {
+                    "style": "Overlapping rounded circles, generous paper margins" if warm else "Offset geometric blocks, deliberate grid rhythm",
+                    "rationale": f"A visual frame for the positioning: {strategy.positioning[:240]}",
+                },
+                "voice": {
+                    "traits": ["Inviting", "Conversational", "Grounded"] if warm else ["Direct", "Purposeful", "Encouraging"],
+                    "sampleLine": f"{'Make room for your next idea with' if warm else 'Your next step starts with'} {candidate.name}.",
+                },
+            })
+        return DirectionsResult.model_validate({"directions": directions})
 
     async def close(self) -> None:
         return None

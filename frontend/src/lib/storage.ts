@@ -5,6 +5,7 @@ import type {
   NamingState,
   StrategyBrief,
 } from "../types/project";
+import { parseDirections } from "./directions";
 import { emptyNamingState } from "../types/project";
 
 /**
@@ -308,6 +309,9 @@ export function parseProject(value: unknown): AakaroProject | null {
     return null;
   const naming = parseNaming(p.naming);
   if (!naming) return null;
+  const directions = parseDirections(p.directions, naming);
+  if (!directions || (directions.status !== "idle" && !confirmed)) return null;
+  if (p.currentStage === "brand-kit" && directions.status !== "confirmed") return null;
   return {
     schemaVersion: 1,
     id: p.id,
@@ -335,6 +339,7 @@ export function parseProject(value: unknown): AakaroProject | null {
         : {}),
     },
     naming,
+    directions,
   };
 }
 

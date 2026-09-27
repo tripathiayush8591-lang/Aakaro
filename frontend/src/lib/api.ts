@@ -1,7 +1,9 @@
+import { validDirections } from "./directions";
 import type { User } from "firebase/auth";
 import { auth } from "./firebase";
 import type { ApiFailure, ConnectionResult, Success } from "../types/api";
 import type {
+  BrandDirection,
   ClarificationQuestion,
   NamingCandidate,
   NamingEvaluation,
@@ -354,4 +356,20 @@ export async function evaluateNamingCandidates(
     throw new ApiError(invalidAIResponse, result.requestId);
   }
   return evaluations as unknown as NamingEvaluation[];
+}
+
+export async function generateDirections(
+  strategy: StrategyBrief,
+  shortlistedCandidates: NamingCandidate[],
+  evaluations: NamingEvaluation[],
+  user: User | null,
+  signal: AbortSignal,
+): Promise<BrandDirection[]> {
+  const result = await request("/api/directions/generate", user, signal, {
+    strategy, shortlistedCandidates, evaluations,
+  });
+  if (!object(result.data) || !validDirections(result.data.directions, shortlistedCandidates.map(c => c.id))) {
+    throw new ApiError(invalidAIResponse, result.requestId);
+  }
+  return [...result.data.directions].sort((a, b) => a.id.localeCompare(b.id));
 }

@@ -238,13 +238,12 @@ class BrandDirection(BaseModel):
     candidateId: ShortLabel
     conceptName: ShortLabel
     conceptStatement: DirectionText
-    visualPersonality: list[ShortLabel] = Field(min_length=2, max_length=4)
-    colorDirection: ColorDirection
-    typographyDirection: TypographyDirection
-    logoDirection: LogoDirection
-    imageryDirection: ImageryDirection
-    voiceDirection: VoiceDirection
-    keywords: list[ShortLabel] = Field(min_length=3, max_length=6)
+    personality: list[ShortLabel] = Field(min_length=2, max_length=4)
+    colors: ColorDirection
+    typography: TypographyDirection
+    logoApproach: LogoDirection
+    imagery: ImageryDirection
+    voice: VoiceDirection
 
 
 class DirectionsGenerateRequest(BaseModel):
@@ -274,8 +273,8 @@ class DirectionsResult(BaseModel):
     def one_direction_per_candidate(self):
         ids = [direction.id for direction in self.directions]
         candidate_ids = [direction.candidateId for direction in self.directions]
-        if len(set(ids)) != len(ids):
-            raise ValueError("directions must have distinct ids")
+        if set(ids) != {"direction1", "direction2"}:
+            raise ValueError("directions must use canonical ids direction1 and direction2")
         if len(set(candidate_ids)) != len(candidate_ids):
             raise ValueError("each direction must reference a different candidate")
         return self

@@ -10,13 +10,16 @@ from pydantic import BaseModel, ValidationError
 from app.core.config import Settings, configured
 from app.core.errors import AppError, configuration_error
 from app.prompts.clarify import CLARIFY_SYSTEM
+from app.prompts.directions import DIRECTIONS_SYSTEM
 from app.prompts.naming import NAMING_CANDIDATES_SYSTEM, NAMING_EVALUATION_SYSTEM
 from app.prompts.strategy import STRATEGY_SYSTEM
 from app.schemas.connection import ConnectionResult
 from app.schemas.stages import (
     ClarificationPair,
     ClarifyResult,
+    DirectionsResult,
     NamingCandidate,
+    NamingEvaluation,
     NamingCandidatesResult,
     NamingEvaluationResult,
     StrategyBrief,
@@ -200,6 +203,28 @@ class GeminiService:
             schema=NamingEvaluationResult,
             max_output_tokens=3072,
             check=covers_submitted,
+        )
+
+    async def directions(
+        self, strategy: StrategyBrief, shortlisted: list[NamingCandidate],
+        evaluations: list[NamingEvaluation],
+    ) -> DirectionsResult:
+        expected = {f"direction{i}": c.id for i, c in enumerate(shortlisted, 1)}
+
+        def matches_shortlist(result: DirectionsResult) -> str | None:
+            actual = {d.id: d.candidateId for d in result.directions}
+            return None if actual == expected else "shortlisted candidate mapping"
+
+        return await self._structured_call(
+            system=DIRECTIONS_SYSTEM,
+            contents=json.dumps({
+                "strategy": strategy.model_dump(),
+                "shortlistedCandidates": [c.model_dump() for c in shortlisted],
+                "evaluations": [e.model_dump() for e in evaluations],
+            }),
+            schema=DirectionsResult,
+            max_output_tokens=4096,
+            check=matches_shortlist,
         )
 
     async def close(self) -> None:

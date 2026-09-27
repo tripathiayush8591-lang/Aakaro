@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type {
   AakaroProject,
+  BrandDirection,
   ClarificationQuestion,
   NamingCandidate,
   NamingEvaluation,
   StrategyBrief,
 } from "../types/project";
-import { emptyNamingState } from "../types/project";
+import { emptyNamingState, emptyDirectionsState } from "../types/project";
+import { validDirections } from "./directions";
 import { loadProject, saveProject } from "./storage";
 
 export function createProject(): AakaroProject {
@@ -22,6 +24,7 @@ export function createProject(): AakaroProject {
     clarification: { questions: [], answers: [], completed: false },
     strategy: { draft: null, confirmed: null },
     naming: emptyNamingState(),
+    directions: emptyDirectionsState(),
   };
 }
 
@@ -50,6 +53,14 @@ export type ProjectAction =
     }
   | { type: "toggleShortlist"; candidateId: string }
   | { type: "confirmNaming"; confirmedAt: string }
+  | { type: "backToNaming" }
+  | { type: "unlockNaming" }
+  | { type: "directionsStart"; expectedRevision: number }
+  | { type: "directionsSuccess"; items: BrandDirection[]; generatedAt: string; expectedRevision: number }
+  | { type: "directionsFailure"; expectedRevision: number }
+  | { type: "selectDirection"; id: string }
+  | { type: "confirmDirection"; confirmedAt: string }
+  | { type: "unlockDirection" }
   | { type: "reset" };
 
 function commit(
@@ -83,6 +94,7 @@ export function projectReducer(
         clarification: clearedClarification,
         strategy: { draft: null, confirmed: null },
         naming: emptyNamingState(),
+        directions: emptyDirectionsState(),
       });
     }
     case "enterClarification": {
@@ -134,6 +146,7 @@ export function projectReducer(
       return commit(state, {
         strategy: { ...state.strategy, draft: action.draft, confirmed: null },
         naming: emptyNamingState(),
+        directions: emptyDirectionsState(),
       });
     }
     case "reviseAnswers":
@@ -141,6 +154,7 @@ export function projectReducer(
         currentStage: "clarification",
         strategy: { draft: null, confirmed: null },
         naming: emptyNamingState(),
+        directions: emptyDirectionsState(),
       });
     case "confirmStrategy": {
       if (!state.strategy.draft) return state;
@@ -159,6 +173,7 @@ export function projectReducer(
         strategy: { draft: state.strategy.confirmed ?? state.strategy.draft, confirmed: null },
         // Naming depends entirely on the confirmed strategy, so it resets.
         naming: emptyNamingState(),
+        directions: emptyDirectionsState(),
       });
     case "namingCandidatesSuccess": {
       if (
@@ -169,6 +184,7 @@ export function projectReducer(
         return state;
       // A fresh generation clears any stale selection from a previous run.
       return commit(state, {
+        directions: emptyDirectionsState(),
         naming: {
           candidates: action.candidates,
           evaluations: [],
@@ -214,7 +230,7 @@ export function projectReducer(
           ? [...naming.selectedIds, action.candidateId]
           : naming.selectedIds;
       if (selectedIds === naming.selectedIds) return state;
-      return commit(state, { naming: { ...naming, selectedIds } });
+      return commit(state, { naming: { ...naming, selectedIds }, directions: emptyDirectionsState() });
     }
     case "confirmNaming": {
       const { naming } = state;
@@ -237,6 +253,46 @@ export function projectReducer(
         },
       });
     }
+    case "backToNaming":
+      return commit(state, { currentStage: state.strategy.confirmed ? "naming" : "strategy" });
+    case "unlockNaming":
+      return commit(state, {
+        currentStage: "naming",
+        naming: { ...state.naming, generationStatus: "ready", graveyardIds: [], confirmedAt: undefined },
+        directions: emptyDirectionsState(),
+      });
+    case "directionsStart":
+      if (state.revision !== action.expectedRevision || state.currentStage !== "directions" ||
+        !state.strategy.confirmed || state.naming.generationStatus !== "confirmed" || state.directions.status !== "idle") return state;
+      return commit(state, { directions: { ...emptyDirectionsState(), status: "generating" } });
+    case "directionsSuccess":
+      if (state.revision !== action.expectedRevision || state.currentStage !== "directions" ||
+        !state.strategy.confirmed || state.naming.generationStatus !== "confirmed" || state.directions.status !== "generating" ||
+        !validDirections(action.items, state.naming.selectedIds)) return state;
+      return commit(state, { directions: {
+        items: action.items, selectedDirectionId: null, status: "ready", generatedAt: action.generatedAt,
+      } });
+    case "directionsFailure":
+      if (state.revision !== action.expectedRevision || state.directions.status !== "generating") return state;
+      return commit(state, { directions: emptyDirectionsState() });
+    case "selectDirection":
+      if (state.currentStage !== "directions" || state.directions.status !== "ready" ||
+        !state.directions.items.some(d => d.id === action.id)) return state;
+      return commit(state, { directions: { ...state.directions, selectedDirectionId: action.id } });
+    case "confirmDirection":
+      if (state.currentStage !== "directions" || state.directions.status !== "ready" ||
+        !state.strategy.confirmed || state.naming.generationStatus !== "confirmed" ||
+        !validDirections(state.directions.items, state.naming.selectedIds) ||
+        !state.directions.items.some(d => d.id === state.directions.selectedDirectionId)) return state;
+      return commit(state, { currentStage: "brand-kit", directions: {
+        ...state.directions, status: "confirmed", confirmedAt: action.confirmedAt,
+      } });
+    case "unlockDirection":
+      // Future kit/rules/review state must be cleared here when that domain is introduced.
+      if (state.directions.status !== "confirmed") return state;
+      return commit(state, { currentStage: "directions", directions: {
+        ...state.directions, status: "ready", confirmedAt: undefined,
+      } });
     case "reset":
       return createProject();
     default:

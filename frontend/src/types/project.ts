@@ -113,6 +113,32 @@ export interface AakaroProject {
     confirmedAt?: string;
   };
   naming: NamingState;
+  directions: DirectionsState;
+}
+
+export interface BrandDirection {
+  id: "direction1" | "direction2";
+  candidateId: string;
+  conceptName: string;
+  conceptStatement: string;
+  personality: string[];
+  colors: { primary: string; secondary: string; accent: string; background: string; rationale: string };
+  typography: { headingStyle: string; bodyStyle: string; rationale: string };
+  logoApproach: { approach: string; rationale: string };
+  imagery: { style: string; rationale: string };
+  voice: { traits: string[]; sampleLine: string };
+}
+
+export interface DirectionsState {
+  items: BrandDirection[];
+  selectedDirectionId: string | null;
+  status: "idle" | "generating" | "ready" | "confirmed";
+  generatedAt?: string;
+  confirmedAt?: string;
+}
+
+export function emptyDirectionsState(): DirectionsState {
+  return { items: [], selectedDirectionId: null, status: "idle" };
 }
 
 /** The five visible steps of the guided journey, shown in the stage rail. */
@@ -136,7 +162,6 @@ export function stageStep(stage: ProjectStage): StageStepId {
     case "strategy":
       return "strategy";
     case "naming":
-    case "directions":
       return "naming";
     default:
       return "identity";

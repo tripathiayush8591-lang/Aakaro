@@ -568,78 +568,12 @@ export function NamingScreen({
   return <ShortlistView project={project} dispatch={dispatch} />;
 }
 
-/** Phase 3 stop point: naming is confirmed; brand directions come next. */
-export function DirectionsReady({
-  project,
-  dispatch,
-}: {
-  project: AakaroProject;
-  dispatch: Dispatch<ProjectAction>;
-}) {
-  const naming = project.naming;
-  if (naming.generationStatus !== "confirmed") return null;
-  const byId = new Map(naming.candidates.map((c) => [c.id, c]));
-  const evaluationFor = new Map(
-    naming.evaluations.map((e) => [e.candidateId, e]),
-  );
-  const shortlisted = naming.selectedIds.flatMap((id) => {
-    const candidate = byId.get(id);
-    return candidate ? [candidate] : [];
-  });
-  const graveyardEntries = naming.graveyardIds.flatMap((id) => {
-    const candidate = byId.get(id);
-    const evaluation = evaluationFor.get(id);
+/** Retain access to the recorded Phase 3 evaluation alongside later stages. */
+export function NamingGraveyard({ project }: { project: AakaroProject }) {
+  const entries = project.naming.graveyardIds.flatMap(id => {
+    const candidate = project.naming.candidates.find(c => c.id === id);
+    const evaluation = project.naming.evaluations.find(e => e.candidateId === id);
     return candidate && evaluation ? [{ candidate, evaluation }] : [];
   });
-
-  function unlock() {
-    if (
-      window.confirm(
-        "Going back clears the naming decision, all five candidates, and their evaluation. Continue?",
-      )
-    )
-      dispatch({ type: "unlockStrategy" });
-  }
-
-  return (
-    <section className="bento review-bento" aria-label="Naming confirmed">
-      <div className="clay tile locked-hero">
-        <span className="eyebrow">Naming confirmed</span>
-        <h1 className="tile-hero">Your name is on the door.</h1>
-        <p className="review-lede">
-          Two shortlisted names carry into brand directions. The Graveyard
-          keeps the three we evaluated and set aside, with the reasons.
-        </p>
-        <div className="tile-actions">
-          <button className="btn btn-secondary" onClick={unlock}>
-            Unlock strategy (restarts naming)
-          </button>
-        </div>
-      </div>
-      <div className="bento-grid">
-        {shortlisted.map((candidate, i) => (
-          <div
-            className={`clay tile brief-tile ${i === 0 ? "tone-blue" : "tone-lime"}`}
-            key={candidate.id}
-          >
-            <div className="tile-head">
-              <span className="eyebrow">Shortlisted · {candidate.territory}</span>
-            </div>
-            <h3 className="candidate-name">{candidate.name}</h3>
-            <p className="brief-value">{candidate.rationale}</p>
-            <p className="candidate-verdict">
-              {evaluationFor.get(candidate.id)?.verdict}
-            </p>
-          </div>
-        ))}
-      </div>
-      <Graveyard entries={graveyardEntries} recorded defaultOpen={false} />
-      <div className="clay tile tile-tip">
-        <p>
-          Brand directions are the next milestone: each shortlisted name grows
-          into a complete direction you can compare side by side.
-        </p>
-      </div>
-    </section>
-  );
+  return <Graveyard entries={entries} recorded defaultOpen={false} />;
 }

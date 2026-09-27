@@ -90,6 +90,8 @@ The idea is trimmed and must contain 1–1,000 characters. Extra request fields 
 
 `POST /api/naming/evaluate` takes `{requestId, strategy, candidates}` (the five actually generated candidates) and returns `data.evaluations[]` — exactly five entries referencing the submitted ids with 1–5 integer `scores` (`distinctiveness`, `strategicFit`, `memorability`, `extensibility`), one to three `strengths` and `risks` (each ≤120 chars), and a `verdict` (≤300). Evaluations must cover exactly the submitted candidate ids; coverage failures are repaired once, then rejected. The client shortlists exactly two; the remaining three are recorded in The Graveyard with their stored evaluation.
 
+`POST /api/directions/generate` takes `{requestId, strategy, shortlistedCandidates, evaluations}`: the confirmed brief, exactly two distinct shortlisted candidates and exactly their two evaluations. Returns `data.directions[]` with canonical `direction1`/`direction2` mapped to shortlist order, `candidateId`, `conceptName`, `conceptStatement`, `personality`, `colors`, `typography`, `logoApproach`, `imagery`, and `voice`. Four colors must be six-digit HEX values. Invalid structure/mapping is repaired at most once. Uses the existing identity dependency, limiter, timeout and deterministic mock switch. Graveyard candidates are not sent.
+
 ```json
 { "requestId": "...", "error": { "code": "PROVIDER_TIMEOUT", "message": "AI took too long. Please try again.", "retryable": true } }
 ```

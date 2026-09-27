@@ -63,7 +63,8 @@ All stage bodies include `requestId` and the structured upstream inputs needed b
 | POST /api/idea/clarify | idea | exactly 3 questions (canonical ids q1–q3, question ≤300, reason ≤300) |
 | POST /api/strategy/generate | idea, exactly 3 {question, answer} pairs | StrategyBrief: oneLiner, audience{primary, description}, problem, promise, differentiation, personality(3), positioning, namingTerritories(2–4) |
 | POST /api/naming/candidates | confirmed strategy | exactly 5 candidates |
-| POST /api/naming/evaluate | confirmed strategy, the 5 generated candidates | evaluation of all 5 (Phase 3); directions generation is a later stage |
+| POST /api/naming/evaluate | confirmed strategy, the 5 generated candidates | evaluation of all 5 (Phase 3) |
+| POST /api/directions/generate | confirmed strategy, exactly 2 shortlistedCandidates, exactly their 2 evaluations | exactly 2 directions, direction1/direction2 mapped to shortlist order |
 | POST /api/kit | strategy, selected direction | kit |
 | POST /api/review | strategy, kit, kitRevision, confirmed rules, rulesRevision | kit review |
 | POST /api/spellcheck | strategy, confirmed rules, rulesRevision, text, contentRevision | issues and suggested rewrite |
@@ -107,3 +108,11 @@ Editing rules increments rulesRevision and invalidates both review modes. Editin
 
 ## Optional speech playback
 Use feature-detected browser speech synthesis, get available voices (including asynchronous voice availability), and match the selected locale. Do not silently use an unrelated language voice. Play/Stop must cancel queued utterances on replacement, navigation, and logout. No browser voice is proof of native pronunciation or semantic safety. Hide/disable the entire optional feature until implemented; no dead buttons.
+
+
+## Phase 4 implemented contract
+- `BrandDirection`: id (`direction1`/`direction2`), candidateId, conceptName, conceptStatement, personality, colors {primary, secondary, accent, background, rationale}, typography {headingStyle, bodyStyle, rationale}, logoApproach {approach, rationale}, imagery {style, rationale}, voice {traits, sampleLine}. Strict six-digit HEX validation; exactly one direction per shortlisted candidate. Structured Gemini call uses the existing total deadline and one repair for schema or mapping failure; mock output is deterministic.
+- Canonical `AakaroProject.directions`: items, selectedDirectionId, status (idle/generating/ready/confirmed), generatedAt, confirmedAt. Selection switches a single id; confirmation requires two valid boards and one valid selection, then sets currentStage=`brand-kit` (ready only; no kit generated).
+- Generation commits are revision/stage/upstream guarded and requests abort on unmount. Failure preserves confirmed naming. Missing directions in Phase 3 saves default to idle; interrupted generation restores idle for explicit retry. Shared frontend validation covers API, reducer and storage.
+- Strategy edits/unlock clear naming and directions; reopening/changing naming clears directions while retaining original candidates/evaluations. Direction unlock removes confirmedAt and returns to comparison. When the future kit domain is added, its kit/rules/review invalidation belongs in that same transition (no kit state exists in Phase 4).
+- CSS previews use allowlisted font/case/weight/shape treatments and validated colors. Native in-app dialog provides Escape, focus containment and focus restoration. Recorded Graveyard remains a separate display and never enters the directions request.
