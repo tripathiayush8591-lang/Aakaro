@@ -1,0 +1,373 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+textarea {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+button:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 4px;
+}
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+h1,
+h2 {
+  font-family: var(--display-font);
+  letter-spacing: -0.04em;
+}
+p {
+  line-height: 1.6;
+}
+.muted {
+  color: var(--muted);
+}
+.eyebrow {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.auth-page {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-4);
+}
+.auth-card {
+  width: min(900px, 100%);
+  min-height: 560px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: var(--space-1);
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+.auth-art {
+  position: relative;
+  min-height: 544px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 34px;
+  overflow: hidden;
+  border-radius: var(--radius);
+  color: white;
+  background: #233136 url("/landscape.svg") center/cover no-repeat;
+}
+.art-wordmark {
+  font-family: var(--display-font);
+  font-size: 27px;
+  font-weight: 700;
+  letter-spacing: -0.07em;
+}
+.art-wordmark span {
+  font: 10px Arial;
+  vertical-align: top;
+  margin-left: 4px;
+}
+.art-copy {
+  text-align: center;
+}
+.art-copy h1 {
+  font-size: clamp(32px, 4vw, 43px);
+  line-height: 1.13;
+  margin-bottom: 20px;
+}
+.art-copy p {
+  color: #e0e6e7;
+  font-size: 15px;
+}
+.art-caption {
+  text-align: center;
+  font-size: 11px;
+  color: #bac4c5;
+}
+.auth-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5) 38px;
+}
+.auth-content-inner {
+  width: 100%;
+  max-width: 290px;
+}
+.auth-content .eyebrow {
+  margin-bottom: 32px;
+  color: var(--muted);
+}
+.auth-content h2 {
+  font-size: 36px;
+  line-height: 1.17;
+  margin-bottom: 20px;
+}
+.intro {
+  font-size: 15px;
+  margin-bottom: 38px;
+}
+.google-button {
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.google-button:hover {
+  background: var(--input);
+}
+.auth-note {
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+  margin: 20px 0 0;
+}
+.page-caption {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 28px 0 0;
+  letter-spacing: 0.04em;
+}
+.workspace {
+  max-width: 1040px;
+  margin: auto;
+  padding: var(--space-4);
+}
+.workspace-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+}
+.wordmark {
+  font: 700 30px var(--display-font);
+  letter-spacing: -0.07em;
+}
+.workspace-header p {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+.account {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 14px;
+}
+.account small {
+  display: block;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.primary,
+.secondary {
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 13px 20px;
+  font-weight: 600;
+}
+.primary {
+  background: var(--accent);
+  color: white;
+}
+.secondary {
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.diagnostic {
+  background: var(--surface);
+  padding: var(--space-5);
+  border-radius: var(--radius);
+}
+.diagnostic h1 {
+  margin: 16px 0;
+  font-size: 34px;
+}
+.diagnostic .eyebrow {
+  color: var(--muted);
+}
+.connection-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-block: 1px solid var(--border);
+  margin: 24px 0;
+  padding: 12px 0;
+  font-size: 13px;
+}
+.connection-status p {
+  margin: 0;
+}
+.text-button {
+  border: 0;
+  padding: 8px;
+  background: transparent;
+  text-decoration: underline;
+  color: var(--text);
+}
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+textarea {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  min-height: 140px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--input);
+  padding: 16px;
+  color: var(--text);
+  line-height: 1.6;
+}
+.field-help {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--muted);
+  margin: 10px 0 24px;
+}
+.diagnostic form + p {
+  font-size: 13px;
+  margin-top: 20px;
+}
+.error {
+  background: var(--error-surface);
+  color: var(--error);
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.error p {
+  margin-bottom: 8px;
+}
+.auth-content .error {
+  margin-top: 16px;
+}
+.result {
+  border-top: 1px solid var(--border);
+  margin-top: 28px;
+  padding-top: 28px;
+}
+.result h2 {
+  font-size: 24px;
+}
+dt {
+  font-weight: 600;
+  font-size: 13px;
+  margin-top: 20px;
+}
+dd {
+  margin: 8px 0 0;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.result small {
+  display: block;
+  margin-top: 24px;
+  overflow-wrap: anywhere;
+}
+.global-error {
+  margin: 20px auto;
+  max-width: 900px;
+}
+.session-pending {
+  padding: 48px;
+  text-align: center;
+}
+@media (max-width: 640px) {
+  .auth-page {
+    padding: 20px;
+  }
+  .auth-card {
+    grid-template-columns: 1fr;
+  }
+  .auth-art {
+    min-height: 290px;
+    padding: 24px;
+  }
+  .art-copy {
+    padding-top: 20px;
+  }
+  .art-copy h1 {
+    font-size: 34px;
+    margin-bottom: 12px;
+  }
+  .art-caption {
+    display: none;
+  }
+  .auth-content {
+    padding: 32px 24px;
+  }
+  .auth-content-inner {
+    max-width: none;
+  }
+  .auth-content .eyebrow {
+    display: none;
+  }
+  .auth-content h2 {
+    font-size: 28px;
+  }
+  .auth-content h2 br,
+  .intro br {
+    display: none;
+  }
+  .intro {
+    margin-bottom: 24px;
+  }
+  .workspace {
+    padding: 20px;
+  }
+  .workspace-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .account {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .diagnostic {
+    padding: 24px;
+  }
+  .diagnostic h1 {
+    font-size: 28px;
+  }
+  .connection-status {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .field-help {
+    font-size: 11px;
+  }
+}

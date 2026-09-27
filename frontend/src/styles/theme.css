@@ -1,0 +1,28 @@
+:root {
+  font-family: "Segoe UI", Arial, sans-serif;
+  color: #202423;
+  background: #f1f1f0;
+  --background: #f1f1f0;
+  --surface: #fff;
+  --text: #202423;
+  --muted: #696e70;
+  --border: #dfe1e3;
+  --accent: #111715;
+  --focus: #416fa0;
+  --error: #9d2d2d;
+  --error-surface: #fff1f0;
+  --input: #f0f0f4;
+  --radius-sm: 12px;
+  --radius: 20px;
+  --radius-lg: 28px;
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 48px;
+  --shadow: 0 20px 70px #24253518;
+  --display-font: "Trebuchet MS", "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
