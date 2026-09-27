@@ -2,6 +2,7 @@ import { initializeApp, getApps } from "firebase/app";
 import {
   getAuth,
   GoogleAuthProvider,
+  signInAnonymously,
   signInWithPopup,
   signOut,
   type Auth,
@@ -28,7 +29,7 @@ export const auth = initializeAuth();
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: "select_account" });
 let loginInProgress = false;
-export async function login() {
+async function guardedSignIn(signIn: (instance: Auth) => Promise<unknown>) {
   if (!auth)
     throw new Error(
       "Sign-in is not configured yet. Please contact the app owner.",
@@ -36,10 +37,18 @@ export async function login() {
   if (loginInProgress) return;
   loginInProgress = true;
   try {
-    await signInWithPopup(auth, provider);
+    await signIn(auth);
   } finally {
     loginInProgress = false;
   }
+}
+export async function login() {
+  await guardedSignIn((instance) => signInWithPopup(instance, provider));
+}
+// Real Firebase anonymous session: the guest receives an anonymous UID and a
+// genuine ID token verified by the backend like any other sign-in provider.
+export async function loginAsGuest() {
+  await guardedSignIn((instance) => signInAnonymously(instance));
 }
 export async function logout() {
   if (auth) await signOut(auth);
@@ -60,6 +69,10 @@ export function authMessage(error: unknown): string {
     return "Check your internet connection and try again.";
   if (code === "auth/unauthorized-domain")
     return "This domain is not authorized for Google sign-in. Check Firebase configuration.";
+  if (code === "auth/operation-not-allowed")
+    return "Guest sign-in is not enabled for this app yet. Please contact the app owner.";
+  if (code === "auth/too-many-requests")
+    return "Too many sign-in attempts. Please wait a moment and try again.";
   if (!auth)
     return "Sign-in is not configured yet. Please contact the app owner.";
   return "Sign-in could not be completed. Try again, or contact the app owner if this continues.";

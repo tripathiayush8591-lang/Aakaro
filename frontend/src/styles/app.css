@@ -1221,6 +1221,33 @@ p {
   transform: translateY(1px) scale(0.98);
   box-shadow: var(--shadow-clay-pressed);
 }
+.guest-button {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 14px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    color var(--micro) var(--ease-out),
+    border-color var(--micro) var(--ease-out);
+}
+.guest-button:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--border);
+}
+.guest-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 .auth-note {
   text-align: center;
   font-size: 11px;

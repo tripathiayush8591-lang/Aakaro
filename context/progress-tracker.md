@@ -1,5 +1,28 @@
 # Aakaro: Progress Tracker
 
+## Continue as guest — Firebase Anonymous Authentication (2026-09-28)
+- Added a production-safe secondary "Continue as guest" action on the existing login screen using Firebase `signInAnonymously()`. The guest receives a real anonymous Firebase UID and a genuine ID token; the shared `loginInProgress` guard prevents concurrent Google/guest sign-in attempts.
+- No backend changes were required: Firebase Admin `verify_id_token` verifies anonymous tokens like any other provider, so `require_identity` returns the anonymous UID, which already scopes user rate limiting and the `aakaro:v1:<uid>:active-project` persistence key. Google Sign-In, product flows, and the dev-auth bypass are untouched (guest path never uses the bypass).
+- Anonymous users display as "Guest" in the workspace navbar with no email line; sign-out uses the existing `signOut()` path.
+- Guest-specific error messages added for `auth/operation-not-allowed` (Anonymous provider not enabled in the Firebase console) and `auth/too-many-requests`.
+- Requires the **Anonymous** provider to be enabled in the Firebase Console (documented in README Firebase Console Setup).
+- Verified: backend `uv run pytest -q` **123 passed** (unchanged); frontend `npm run typecheck` ✓, `npm test` **58 passed** (1 new: guest error path → anonymous session shown as Guest → normal sign-out), `npm run build` ✓.
+
+## Render backend deployment — 2026-09-28
+- Created `aakaro-api` via the connected Render plugin in the user-confirmed Ayush's workspace (`tea-d7cm3ufavr4c73aa40qg`). Service: `srv-dasmomu0tbcc73840vu0`; assigned URL: https://aakaro-api.onrender.com.
+- Python, free plan, Singapore, root directory `backend`, branch `main`, auto-deploy enabled. Source commit: `5f83b2fb58ce374510602e34edcc380e520dbe70`.
+- Initial build `cd backend && uv sync --frozen` failed: `/home/render/envwrappers/uv: line 100: uv: command not found`. Setting `UV_VERSION=0.12.10` and redeploying produced the same failure; Render requires a root-level uv.lock for automatic uv installation.
+- Latest user instruction superseded the pip workaround. Updated through the signed-in dashboard: root `backend`, build `uv sync --frozen`, start `uv run uvicorn app.main:create_app --factory --host 0.0.0.0 --port $PORT`. Verified saved configuration via Render connector.
+- Set `ENVIRONMENT=production`, `DEV_AUTH_ENABLED=false`, `MOCK_PROVIDER_ENABLED=false`. No application secrets transferred or printed. Gemini/Firebase production configuration and frontend CORS still pending.
+- Deployment `dep-dasmsc3ncjis73argpb0` automatically triggered by the configuration update and reached **live**. Build logs: 61 packages installed, build successful. Runtime logs: application startup complete, Uvicorn listening on `0.0.0.0:10000`, GET `/health` **200 OK**. Non-blocking uv environment-path warning observed; `/` returns 404 because no root route exists.
+- Verified public HTTPS GET https://aakaro-api.onrender.com/health returned **HTTP 200** and `data.status: "ok"`. This verifies hosting/health only, not authenticated Gemini integration. Dashboard evidence: `gui-test-screenshots/render-deploy-live.png`. No Vercel work performed.
+
+## Vercel frontend deployment — 2026-09-28
+- Imported GitHub repository into Vercel Hobby as project `aakaro`, root directory `frontend`, Vite preset. Configured production `VITE_API_BASE_URL` to the Render backend URL without printing any secret values; no backend changes made.
+- Production deployment succeeded. URL: https://aakaro.vercel.app/ . Homepage loads with the Aakaro cinematic landing page.
+- Build completed successfully in the Vercel deployment flow; the Vercel MCP deployment/log tools were unavailable for post-deploy API retrieval, but the signed-in dashboard reported deployment success.
+- Direct `/login` returns Vercel 404. Direct `/app` also returns Vercel 404 on refresh because the SPA has no Vercel rewrite configuration; source routing currently uses `/app`, and there is no `/login` route. User asked not to refactor or change code unless deployment fails, so no routing fix was made. Firebase client variable names confirmed in source: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`; `VITE_DEV_AUTH_BYPASS` is recognized as the temporary bypass flag and was not enabled.
+
 ## Current phase
 Phase 3 (Naming Engine + Evaluation + Shortlist + The Graveyard) implemented and verified locally with the development mock provider; the project now reaches the Brand Directions-ready state. Real Gemini and Firebase remain unconfigured; auth is explicitly deferred with opt-in dev flags; no deployment has been performed.
 
@@ -266,4 +289,3 @@ Single active project per user/browser; no cross-device sync. Names are not trad
   - Mobile 390x844: Landmark centered, zero horizontal overflow, responsive cover scaling.
   - CTA Navigation: Clicked "Enter Aakaro" -> URL updated to `/app` -> existing AuthPage/Workspace mounted.
   - Browser Back: `history.back()` returned cleanly to `/` landing page.
-

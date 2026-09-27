@@ -1,10 +1,19 @@
 interface Props {
   pending: boolean;
+  guestPending: boolean;
   error: string;
   onLogin: () => void;
+  onGuestLogin: () => void;
   initializing: boolean;
 }
-export function AuthPage({ pending, error, onLogin, initializing }: Props) {
+export function AuthPage({
+  pending,
+  guestPending,
+  error,
+  onLogin,
+  onGuestLogin,
+  initializing,
+}: Props) {
   return (
     <main className="auth-page">
       <section className="auth-card" aria-label="Welcome to Aakaro">
@@ -38,7 +47,7 @@ export function AuthPage({ pending, error, onLogin, initializing }: Props) {
             <button
               className="google-button"
               onClick={onLogin}
-              disabled={pending || initializing}
+              disabled={pending || guestPending || initializing}
             >
               <svg
                 aria-hidden="true"
@@ -68,6 +77,13 @@ export function AuthPage({ pending, error, onLogin, initializing }: Props) {
                 : pending
                   ? "Opening Google…"
                   : "Continue with Google"}
+            </button>
+            <button
+              className="guest-button"
+              onClick={onGuestLogin}
+              disabled={pending || guestPending || initializing}
+            >
+              {guestPending ? "Preparing your workspace…" : "Continue as guest"}
             </button>
             {error && (
               <p className="error" role="alert">

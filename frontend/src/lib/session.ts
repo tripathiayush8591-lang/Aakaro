@@ -28,10 +28,13 @@ export function sessionOfUser(user: {
   displayName: string | null;
   email: string | null;
   photoURL?: string | null;
+  isAnonymous?: boolean;
 }): AppSession {
   return {
     uid: user.uid,
-    displayName: user.displayName || user.email || "Signed in",
+    displayName: user.isAnonymous
+      ? "Guest"
+      : user.displayName || user.email || "Signed in",
     email: user.email ?? "",
     photoURL: user.photoURL ?? null,
   };

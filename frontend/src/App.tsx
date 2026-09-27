@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
-import { auth, authMessage, login, logout } from "./lib/firebase";
+import { auth, authMessage, login, loginAsGuest, logout } from "./lib/firebase";
 import { AuthPage } from "./components/AuthPage";
 import { Workspace } from "./features/brand/Workspace";
 import { LandingPage } from "./pages/LandingPage";
@@ -25,6 +25,7 @@ export default function App() {
   }>({ user: null, revision: 0 });
   const [initializing, setInitializing] = useState(!!auth);
   const [pending, setPending] = useState(false);
+  const [guestPending, setGuestPending] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState("");
 
@@ -72,6 +73,18 @@ export default function App() {
       setPending(false);
     }
   }
+  async function signInAsGuest() {
+    if (guestPending) return;
+    setGuestPending(true);
+    setError("");
+    try {
+      await loginAsGuest();
+    } catch (reason) {
+      setError(authMessage(reason));
+    } finally {
+      setGuestPending(false);
+    }
+  }
   async function signOut() {
     setSigningOut(true);
     setError("");
@@ -102,8 +115,10 @@ export default function App() {
       <AuthPage
         initializing={initializing}
         pending={pending}
+        guestPending={guestPending}
         error={error}
         onLogin={signIn}
+        onGuestLogin={signInAsGuest}
       />
     );
   return (

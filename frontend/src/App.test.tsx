@@ -6,6 +6,7 @@ import type { User } from "firebase/auth";
 const mocks = vi.hoisted(() => ({
   listener: null as null | ((user: User | null) => void),
   login: vi.fn(),
+  loginAsGuest: vi.fn(),
   logout: vi.fn(),
   clarifyIdea: vi.fn(),
   generateStrategy: vi.fn(),
@@ -24,6 +25,7 @@ vi.mock("firebase/auth", () => ({
 vi.mock("./lib/firebase", () => ({
   auth: {},
   login: mocks.login,
+  loginAsGuest: mocks.loginAsGuest,
   logout: mocks.logout,
   authMessage: () => "Sign-in was cancelled. Try again.",
 }));
@@ -174,6 +176,44 @@ test("Google sign-in triggers login and popup cancellation shows error allowing 
   });
   await userEvent.click(button);
   expect(await screen.findByLabelText("Your idea")).toBeTruthy();
+});
+
+test("Continue as guest signs in anonymously, shows a Guest session, and signs out normally", async () => {
+  render(<App />);
+  await act(async () => {
+    mocks.listener?.(null);
+  });
+  const guestButton = screen.getByRole("button", { name: "Continue as guest" });
+
+  // Guest sign-in failure shows the shared error path and allows retry.
+  mocks.loginAsGuest.mockRejectedValueOnce(new Error("guest unavailable"));
+  await userEvent.click(guestButton);
+  expect(mocks.loginAsGuest).toHaveBeenCalledTimes(1);
+  expect(await screen.findByRole("alert")).toBeTruthy();
+
+  // Success: the anonymous Firebase user reaches the workspace with its own
+  // UID and no email; the session is presented as Guest.
+  const guest = {
+    uid: "anon-uid-1",
+    displayName: null,
+    email: null,
+    isAnonymous: true,
+  } as unknown as User;
+  mocks.loginAsGuest.mockImplementationOnce(async () => {
+    mocks.listener?.(guest);
+  });
+  await userEvent.click(guestButton);
+  expect(await screen.findByText("Guest")).toBeTruthy();
+  expect(screen.queryByText("person@example.test")).toBeNull();
+
+  // Sign out returns to the auth page like any other session.
+  await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
+  expect(
+    await screen.findByRole("button", { name: "Continue with Google" }),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole("button", { name: "Continue as guest" }),
+  ).toBeTruthy();
 });
 
 test("signed-in workspace displays displayName, email, and avatar when available", async () => {

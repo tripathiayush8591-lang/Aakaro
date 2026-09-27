@@ -94,9 +94,10 @@ Never commit `.env`, `.env.local`, Firebase service-account JSON, or API keys. G
 
 ### Firebase Console Setup
 1. **Google Provider:** In Firebase Console > Authentication > Sign-in method, enable the **Google** provider.
-2. **Authorized Domains:** In Authentication > Settings > Authorized domains, confirm `localhost` is listed.
-3. **Web App:** Register a Web App under Project Settings to obtain the 4 public `VITE_FIREBASE_*` values.
-4. **Service Account Credentials:** Under Project Settings > Service accounts, generate a new private key and reference the path via `GOOGLE_APPLICATION_CREDENTIALS` (or use host ADC).
+2. **Anonymous Provider:** In the same Sign-in method list, also enable **Anonymous**. This powers the production-safe "Continue as guest" option: the guest receives a real anonymous Firebase UID and ID token verified by the backend like any other sign-in.
+3. **Authorized Domains:** In Authentication > Settings > Authorized domains, confirm `localhost` is listed.
+4. **Web App:** Register a Web App under Project Settings to obtain the 4 public `VITE_FIREBASE_*` values.
+5. **Service Account Credentials:** Under Project Settings > Service accounts, generate a new private key and reference the path via `GOOGLE_APPLICATION_CREDENTIALS` (or use host ADC).
 
 ### Running in Real Auth Mode (Default)
 1. **Frontend:** Configure the 4 `VITE_FIREBASE_*` values in `frontend/.env.local`. Keep `VITE_DEV_AUTH_BYPASS` unset or empty.
